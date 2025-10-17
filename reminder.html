@@ -225,6 +225,7 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             display: none;
             animation: slideIn 0.3s ease-out;
+            z-index: 1000;
         }
 
         @keyframes slideIn {
@@ -278,6 +279,17 @@
             border-color: #667eea;
         }
 
+        .debug-info {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #b8b8d1;
+            font-family: monospace;
+        }
+
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -302,10 +314,10 @@
         <header>
             <div class="logo">LifeLink</div>
             <nav>
-                <a href="homepage.html">Home</a>
-                <a href="dashboard.html">Dashboard</a>
-                <a href="health-data.html">Health Data</a>
-                <a href="login.html">Login/Sign-up</a>
+                <a href="#">Home</a>
+                <a href="#">Dashboard</a>
+                <a href="#">Health Data</a>
+                <a href="#">Login/Sign-up</a>
             </nav>
         </header>
 
@@ -349,6 +361,10 @@
 
                     <button type="submit" class="btn">Set Reminder</button>
                 </form>
+
+                <div class="debug-info" id="debugInfo">
+                    Monitoring active... Current time will update here
+                </div>
             </div>
 
             <div class="reminders-list">
@@ -365,8 +381,10 @@
         const chatID = "6091477695";
         const telegramAPI = "https://api.telegram.org";
 
-        let reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+        // Store reminders in memory (not localStorage)
+        let reminders = [];
         let selectedFrequency = 'once';
+        let sentNotifications = new Set(); // Track sent notifications
 
         // Frequency button handling
         document.querySelectorAll('.frequency-btn').forEach(btn => {
@@ -399,9 +417,8 @@
             };
 
             reminders.push(reminder);
-            localStorage.setItem('reminders', JSON.stringify(reminders));
 
-            // Send Telegram notification
+            // Send Telegram confirmation
             const message = `💊 *New Tablet Reminder Set*\n\n` +
                           `*Tablet:* ${tabletName}\n` +
                           `*Dosage:* ${dosage}\n` +
@@ -418,7 +435,7 @@
             document.querySelector('.frequency-btn[data-freq="once"]').classList.add('active');
             selectedFrequency = 'once';
             
-            showNotification('Reminder set successfully!', 'success');
+            showNotification('Reminder set successfully! Keep this page open.', 'success');
         });
 
         async function sendTelegramMessage(message) {
@@ -435,12 +452,17 @@
                     })
                 });
 
+                const data = await response.json();
+                console.log('Telegram response:', data);
+
                 if (!response.ok) {
                     throw new Error('Failed to send Telegram message');
                 }
+                return true;
             } catch (error) {
                 console.error('Error sending Telegram message:', error);
                 showNotification('Failed to send Telegram notification', 'error');
+                return false;
             }
         }
 
@@ -467,7 +489,6 @@
 
         function deleteReminder(id) {
             reminders = reminders.filter(r => r.id !== id);
-            localStorage.setItem('reminders', JSON.stringify(reminders));
             displayReminders();
             showNotification('Reminder deleted', 'success');
         }
@@ -478,62 +499,97 @@
             notification.className = `notification ${type} show`;
             setTimeout(() => {
                 notification.classList.remove('show');
-            }, 3000);
+            }, 4000);
         }
 
         // Check for reminders and send notifications
-        function checkReminders() {
+        async function checkReminders() {
             const now = new Date();
-            const currentTime = now.toTimeString().slice(0, 5);
-            const currentDate = now.toISOString().split('T')[0];
+            
+            // Format time as HH:MM (24-hour format)
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const currentTime = `${hours}:${minutes}`;
+            
+            // Format date as YYYY-MM-DD
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const currentDate = `${year}-${month}-${day}`;
 
-            console.log('Checking reminders at:', currentTime, currentDate);
+            // Update debug info
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.textContent = `🕐 Current: ${currentTime} | ${currentDate} | Checking ${reminders.length} reminder(s)`;
+
+            console.log('=== CHECKING REMINDERS ===');
+            console.log('Current time:', currentTime);
+            console.log('Current date:', currentDate);
             console.log('Active reminders:', reminders);
 
-            reminders.forEach(async reminder => {
-                // Check if we haven't already sent notification for this exact minute
+            for (const reminder of reminders) {
                 const reminderKey = `${reminder.id}_${currentDate}_${currentTime}`;
-                const alreadySent = sessionStorage.getItem(reminderKey);
+                
+                console.log(`Checking: ${reminder.tabletName}`);
+                console.log(`  - Set for: ${reminder.time} on ${reminder.date}`);
+                console.log(`  - Match: Time=${reminder.time === currentTime}, Date=${reminder.date === currentDate}, Active=${reminder.active}`);
 
-                console.log(`Checking reminder: ${reminder.tabletName}, Time: ${reminder.time}, Date: ${reminder.date}, Active: ${reminder.active}`);
-
-                if (reminder.time === currentTime && reminder.date === currentDate && reminder.active && !alreadySent) {
-                    console.log('SENDING NOTIFICATION NOW!');
+                // Check if time and date match, and we haven't sent this notification yet
+                if (reminder.time === currentTime && 
+                    reminder.date === currentDate && 
+                    reminder.active && 
+                    !sentNotifications.has(reminderKey)) {
+                    
+                    console.log('🔔 MATCH FOUND! Sending notification...');
                     
                     const message = `⏰ *REMINDER: Time to take your medication!*\n\n` +
                                   `💊 *Tablet:* ${reminder.tabletName}\n` +
                                   `📋 *Dosage:* ${reminder.dosage}\n` +
+                                  `🕐 *Time:* ${reminder.time}\n` +
                                   (reminder.notes ? `📝 *Notes:* ${reminder.notes}` : '');
 
-                    await sendTelegramMessage(message);
+                    const success = await sendTelegramMessage(message);
                     
-                    // Mark as sent for this minute
-                    sessionStorage.setItem(reminderKey, 'true');
-                    
-                    // Show notification on page
-                    showNotification(`Time to take ${reminder.tabletName}!`, 'success');
-                    
-                    if (reminder.frequency === 'once') {
-                        reminder.active = false;
-                        reminders = reminders.filter(r => r.id !== reminder.id);
-                        localStorage.setItem('reminders', JSON.stringify(reminders));
-                        displayReminders();
+                    if (success) {
+                        // Mark as sent
+                        sentNotifications.add(reminderKey);
+                        
+                        // Show notification on page
+                        showNotification(`💊 Time to take ${reminder.tabletName}!`, 'success');
+                        
+                        console.log('✅ Notification sent successfully!');
+                        
+                        // Handle frequency
+                        if (reminder.frequency === 'once') {
+                            reminder.active = false;
+                            reminders = reminders.filter(r => r.id !== reminder.id);
+                            displayReminders();
+                            console.log('Reminder removed (once only)');
+                        }
                     }
                 }
-            });
+            }
         }
 
         // Set today's date as default
-        document.getElementById('reminderDate').valueAsDate = new Date();
+        const today = new Date();
+        document.getElementById('reminderDate').valueAsDate = today;
 
-        // Check reminders every 10 seconds for more accurate timing
-        setInterval(checkReminders, 10000);
+        // Check reminders every 5 seconds for accurate timing
+        setInterval(checkReminders, 5000);
         
         // Run check immediately on page load
         checkReminders();
 
         // Initial display
         displayReminders();
+
+        // Warn user if they try to close the page with active reminders
+        window.addEventListener('beforeunload', function (e) {
+            if (reminders.length > 0) {
+                e.preventDefault();
+                e.returnValue = 'You have active reminders. If you close this page, notifications will not be sent.';
+            }
+        });
     </script>
 </body>
 </html>
