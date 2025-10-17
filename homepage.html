@@ -132,9 +132,11 @@
                 <li><a href="#" class="nav-link">Home</a></li>
                 <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
                 <li><a href="reportt.html" class="nav-link">Health Data</a></li>
-                <li><a href="login.html" class="nav-link">Login/Sign-up</a></li>
+                <!-- loginNav will be shown only when NOT signed in -->
+                <li id="loginNav"><a href="login.html" class="nav-link">Login/Sign-up</a></li>
                 <li><a href="profile.html" class="nav-link">Profile</a></li>
-                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+                <!-- logoutNav will be shown only when signed in -->
+                <li id="logoutNav" style="display:none;"><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
             </ul>
         </nav>
     </header>
@@ -184,9 +186,29 @@
       // Initialize Firebase
       firebase.initializeApp(firebaseConfig);
 
+      // References to nav items for toggling
+      const loginNav = () => document.getElementById('loginNav');
+      const logoutNav = () => document.getElementById('logoutNav');
+
+      // Observe auth state and toggle nav items
+      firebase.auth().onAuthStateChanged((user) => {
+        const loginEl = loginNav();
+        const logoutEl = logoutNav();
+        if (user) {
+          // User is signed in: hide login, show logout
+          if (loginEl) loginEl.style.display = 'none';
+          if (logoutEl) logoutEl.style.display = 'inline-block';
+        } else {
+          // No user: show login, hide logout
+          if (loginEl) loginEl.style.display = 'inline-block';
+          if (logoutEl) logoutEl.style.display = 'none';
+        }
+      });
+
       function logout() {
         firebase.auth().signOut().then(() => {
           console.log('User signed out');
+          // after sign-out, the auth state listener will show the login link again
           window.location.href = 'login.html';
         }).catch((error) => {
           console.error('Sign Out Error', error);
@@ -334,7 +356,7 @@
             }
         };
 
-        // Medical AI (adapted from chatbot.html)
+        // Medical AI (adapted)
         class MedicalAIWidget {
             generateResponse(symptoms, imageAnalysis = null) {
                 if (!symptoms || !symptoms.trim()) {
@@ -342,7 +364,6 @@
                 }
 
                 const lowerSymptoms = symptoms.toLowerCase();
-                // greetings and casual handling
                 const greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening'];
                 const casualPhrases = ['how are you', 'what can you do', 'help', 'who are you'];
 
@@ -363,7 +384,6 @@
                 }
 
                 if (!matchedCondition) {
-                    // fallback: generic helpful guidance
                     return "I understand you're reaching out about a health concern. I don't have a direct match for that description, but here are some general steps:\n\n• Describe how long you've had symptoms and whether they're getting better or worse.\n• Note any new medications, exposures, or injuries.\n• For sudden severe symptoms (difficulty breathing, high fever, severe pain), seek urgent medical care.\n\nIf you can provide more detail, I can try to suggest possible causes and next steps.";
                 }
 
