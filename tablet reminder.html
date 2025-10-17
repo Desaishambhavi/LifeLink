@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablet Reminder with Telegram & Voice</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .main-content {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .form-section, .reminders-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        
+        h2 {
+            color: #4ECDC4;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #4ECDC4;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4ECDC4;
+        }
+        
+        .tablet-selection {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .tablet-option {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tablet-option:hover {
+            border-color: #4ECDC4;
+        }
+        
+        .tablet-option.selected {
+            border-color: #4ECDC4;
+            background-color: #e8f7f6;
+        }
+        
+        button {
+            background: #4ECDC4;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #3DBBB3;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        #testTelegram {
+            background: #FF9F1C;
+        }
+        
+        #testTelegram:hover {
+            background: #FF8C00;
+        }
+        
+        #testVoice {
+            background: #9B59B6;
+        }
+        
+        #testVoice:hover {
+            background: #8E44AD;
+        }
+        
+        .reminder-item {
+            background: white;
+            border-left: 4px solid #4ECDC4;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .reminder-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .reminder-time {
+            font-weight: bold;
+            color: #4ECDC4;
+            font-size: 1.1rem;
+        }
+        
+        .delete-reminder {
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .tablets-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .tablet-badge {
+            background: #e8f7f6;
+            color: #2a7a72;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background: #cce7ff;
+            color: #004085;
+            border: 1px solid #b3d7ff;
+        }
+        
+        .instructions {
+            background: #e8f7f6;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .instructions h3 {
+            color: #2a7a72;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .telegram-info {
+            background: #0088cc;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .voice-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .voice-controls button {
+            margin-top: 0;
+            flex: 1;
+        }
+        
+        .voice-settings {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .voice-settings h4 {
+            margin-bottom: 10px;
+            color: #4ECDC4;
+        }
+        
+        .voice-options {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .voice-option {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .speaking-indicator {
+            display: none;
+            background: #4ECDC4;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin-top: 10px;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💊 Tablet Reminder</h1>
+            <p class="subtitle">Set reminders with Telegram notifications & voice alerts</p>
+        </header>
+        
+        <div class="telegram-info">
+            <p><strong>Telegram notifications are enabled!</strong> Your reminders will be sent automatically.</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="form-section">
+                <h2>Set New Reminder</h2>
+                
+                <div class="form-group">
+                    <label>Select Tablets:</label>
+                    <div class="tablet-selection">
+                        <div class="tablet-option" data-tablet="Paracetamol">
+                            💊 Paracetamol
+                        </div>
+                        <div class="tablet-option" data-tablet="Vitamin C">
+                            🍊 Vitamin C
+                        </div>
+                        <div class="tablet-option" data-tablet="Antibiotic">
+                            🦠 Antibiotic
+                        </div>
+                        <div class="tablet-option" data-tablet="Blood Pressure">
+                            ❤ Blood Pressure
+                        </div>
+                        <div class="tablet-option" data-tablet="Pain Killer">
+                            🩹 Pain Killer
+                        </div>
+                        <div class="tablet-option" data-tablet="Other">
+                            💊 Other
+                        </div>
+                    </div>
+                    <input type="text" id="customTablet" placeholder="Or enter custom tablet name" style="display: none;">
+                </div>
+                
+                <div class="form-group">
+                    <label for="reminderTime">Reminder Time:</label>
+                    <input type="time" id="reminderTime" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="frequency">Frequency:</label>
+                    <select id="frequency">
+                        <option value="once">Once Only</option>
+                        <option value="daily" selected>Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Notes (Optional):</label>
+                    <input type="text" id="notes" placeholder="e.g., Take after meal">
+                </div>
+                
+                <div class="voice-settings">
+                    <h4>Voice Settings</h4>
+                    <div class="voice-options">
+                        <div class="voice-option">
+                            <label for="voiceEnabled">Enable Voice:</label>
+                            <select id="voiceEnabled">
+                                <option value="yes">Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                        <div class="voice-option">
+                            <label for="voiceRate">Speech Rate:</label>
+                            <input type="range" id="voiceRate" min="0.5" max="2" step="0.1" value="1">
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="setReminder">Set Reminder</button>
+                <button id="testTelegram">Test Telegram Notification</button>
+                <button id="testVoice">Test Voice Summary</button>
+                
+                <div id="statusMessage"></div>
+                <div id="speakingIndicator" class="speaking-indicator">🔊 Speaking...</div>
+            </div>
+            
+            <div class="reminders-section">
+                <h2>Active Reminders</h2>
+                <div id="remindersList">
+                    <p id="noReminders">No reminders set yet. Add your first reminder!</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>How it works:</h3>
+            <ul>
+                <li>Select tablets and set reminder time</li>
+                <li>Reminders will be sent to your Telegram automatically</li>
+                <li>Voice summaries can be read aloud when reminders are set</li>
+                <li>Daily reminders will repeat at the same time every day</li>
+                <li>Test the notification and voice to verify they're working</li>
+                <li>Delete reminders when you no longer need them</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Telegram credentials
+        const botToken = "8492567230:AAG85aFUNpYuQJ9JgI8S5Q6TKjJfIMCiW4o";
+        const chatID = "6091477695";
+        
+        // DOM Elements
+        const tabletOptions = document.querySelectorAll('.tablet-option');
+        const customTabletInput = document.getElementById('customTablet');
+        const reminderTimeInput = document.getElementById('reminderTime');
+        const frequencySelect = document.getElementById('frequency');
+        const notesInput = document.getElementById('notes');
+        const setReminderBtn = document.getElementById('setReminder');
+        const testTelegramBtn = document.getElementById('testTelegram');
+        const testVoiceBtn = document.getElementById('testVoice');
+        const remindersList = document.getElementById('remindersList');
+        const noReminders = document.getElementById('noReminders');
+        const statusMessage = document.getElementById('statusMessage');
+        const speakingIndicator = document.getElementById('speakingIndicator');
+        const voiceEnabled = document.getElementById('voiceEnabled');
+        const voiceRate = document.getElementById('voiceRate');
+        
+        // Speech synthesis
+        let speechSynthesis = window.speechSynthesis;
+        let isSpeaking = false;
+        
+        // Selected tablets
+        let selectedTablets = [];
+        
+        // Initialize with current time + 5 minutes as default
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 5);
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        reminderTimeInput.value = hours + ':' + minutes;
+        
+        // Tablet selection logic
+        tabletOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const tablet = option.getAttribute('data-tablet');
+                
+                if (tablet === 'Other') {
+                    customTabletInput.style.display = 'block';
+                    customTabletInput.focus();
+                    option.classList.add('selected');
+                } else {
+                    if (option.classList.contains('selected')) {
+                        option.classList.remove('selected');
+                        selectedTablets = selectedTablets.filter(t => t !== tablet);
+                    } else {
+                        option.classList.add('selected');
+                        selectedTablets.push(tablet);
+                    }
+                }
+                
+                // Remove 'Other' selection if custom input is hidden
+                if (tablet !== 'Other' && customTabletInput.style.display === 'block') {
+                    document.querySelector('.tablet-option[data-tablet="Other"]').classList.remove('selected');
+                    customTabletInput.style.display = 'none';
+                }
+            });
+        });
+        
+        // Custom tablet input
+        customTabletInput.addEventListener('input', () => {
+            if (customTabletInput.value.trim()) {
+                selectedTablets = selectedTablets.filter(t => t !== 'Custom');
+                selectedTablets.push(customTabletInput.value.trim());
+            }
+        });
+        
+        // Send message to Telegram
+        async function sendTelegramMessage(message) {
+            try {
+                const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatID,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+                
+                const data = await response.json();
+                return data.ok;
+            } catch (error) {
+                console.error('Error sending Telegram message:', error);
+                return false;
+            }
+        }
+        
+        // Speak text using Web Speech API
+        function speakText(text) {
+            if (voiceEnabled.value === 'no' || !speechSynthesis) {
+                return false;
+            }
+            
+            // Stop any ongoing speech
+            if (isSpeaking) {
+                speechSynthesis.cancel();
+            }
+            
+            // Create a new speech utterance
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Configure speech properties
+            utterance.rate = parseFloat(voiceRate.value);
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            
+            // Find a suitable voice
+            const voices = speechSynthesis.getVoices();
+            const englishVoice = voices.find(voice => 
+                voice.lang.startsWith('en') && voice.name.includes('Female')
+            ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0];
+            
+            if (englishVoice) {
+                utterance.voice = englishVoice;
+            }
+            
+            // Event handlers
+            utterance.onstart = () => {
+                isSpeaking = true;
+                speakingIndicator.style.display = 'block';
+            };
+            
+            utterance.onend = () => {
+                isSpeaking = false;
+                speakingIndicator.style.display = 'none';
+            };
+            
+            utterance.onerror = (event) => {
+                console.error('Speech synthesis error:', event);
+                isSpeaking = false;
+                speakingIndicator.style.display = 'none';
+                showStatus('Error with voice synthesis', 'error');
+            };
+            
+            // Speak the text
+            speechSynthesis.speak(utterance);
+            return true;
+        }
+        
+        // Stop speaking
+        function stopSpeaking() {
+            if (speechSynthesis && isSpeaking) {
+                speechSynthesis.cancel();
+                isSpeaking = false;
+                speakingIndicator.style.display = 'none';
+            }
+        }
+        
+        // Create voice summary for a reminder
+        function createVoiceSummary(reminder) {
+            const timeParts = reminder.time.split(':');
+            const hour = parseInt(timeParts[0]);
+            const minute = parseInt(timeParts[1]);
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            
+            let summary = `Reminder set for ${displayHour}:${minute.toString().padStart(2, '0')} ${ampm}. `;
+            summary += `Tablets to take: ${reminder.tablets.join(', ')}. `;
+            
+            if (reminder.notes) {
+                summary += `Notes: ${reminder.notes}. `;
+            }
+            
+            summary += `This is a ${reminder.frequency} reminder.`;
+            
+            return summary;
+        }
+        
+        // Show status message
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = 'status-message ' + type;
+            setTimeout(() => {
+                statusMessage.textContent = '';
+                statusMessage.className = 'status-message';
+            }, 5000);
+        }
+        
+        // Add reminder to list
+        function addReminderToList(reminder) {
+            if (noReminders) {
+                noReminders.style.display = 'none';
+            }
+            
+            const reminderItem = document.createElement('div');
+            reminderItem.className = 'reminder-item';
+            reminderItem.innerHTML = `
+                <div class="reminder-header">
+                    <span class="reminder-time">${reminder.time}</span>
+                    <div>
+                        <button class="speak-reminder" data-id="${reminder.id}">🔊</button>
+                        <button class="delete-reminder" data-id="${reminder.id}">Delete</button>
+                    </div>
+                </div>
+                <div class="tablets-list">
+                    ${reminder.tablets.map(tablet => 
+                        <span class="tablet-badge">${tablet}</span>
+                    ).join('')}
+                </div>
+                <div>${reminder.frequency} • ${reminder.notes || 'No notes'}</div>
+            `;
+            
+            remindersList.appendChild(reminderItem);
+            
+            // Add delete functionality
+            reminderItem.querySelector('.delete-reminder').addEventListener('click', function() {
+                deleteReminder(this.getAttribute('data-id'));
+                reminderItem.remove();
+                
+                if (remindersList.children.length === 1) { // Only the "no reminders" message
+                    noReminders.style.display = 'block';
+                }
+            });
+            
+            // Add speak functionality
+            reminderItem.querySelector('.speak-reminder').addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const reminders = JSON.parse(localStorage.getItem('tabletReminders') || '[]');
+                const reminder = reminders.find(r => r.id === id);
+                
+                if (reminder) {
+                    const summary = createVoiceSummary(reminder);
+                    speakText(summary);
+                }
+            });
+        }
+        
+        // Delete reminder
+        function deleteReminder(id) {
+            let reminders = JSON.parse(localStorage.getItem('tabletReminders') || '[]');
+            reminders = reminders.filter(r => r.id !== id);
+            localStorage.setItem('tabletReminders', JSON.stringify(reminders));
+            showStatus('Reminder deleted successfully', 'success');
+        }
+        
+        // Set reminder
+        setReminderBtn.addEventListener('click', async () => {
+            const time = reminderTimeInput.value;
+            const frequency = frequencySelect.value;
+            const notes = notesInput.value.trim();
+            
+            // Validate tablets selection
+            let tablets = [...selectedTablets];
+            if (customTabletInput.style.display === 'block' && customTabletInput.value.trim()) {
+                tablets.push(customTabletInput.value.trim());
+            }
+            
+            if (tablets.length === 0) {
+                showStatus('Please select at least one tablet', 'error');
+                return;
+            }
+            
+            if (!time) {
+                showStatus('Please set a reminder time', 'error');
+                return;
+            }
+            
+            // Create reminder object
+            const reminder = {
+                id: Date.now().toString(),
+                tablets: tablets,
+                time: time,
+                frequency: frequency,
+                notes: notes,
+                createdAt: new Date().toISOString()
+            };
+            
+            // Save to localStorage
+            let reminders = JSON.parse(localStorage.getItem('tabletReminders') || '[]');
+            reminders.push(reminder);
+            localStorage.setItem('tabletReminders', JSON.stringify(reminders));
+            
+            // Add to UI
+            addReminderToList(reminder);
+            
+            // Send test message to Telegram
+            const message = '💊 <b>New Tablet Reminder Set!</b>\n\n' +
+                       '🕒 Time: ' + time + '\n' +
+                       '📅 Frequency: ' + frequency + '\n' +
+                       '💊 Tablets: ' + tablets.join(', ') + '\n' +
+                       '📝 Notes: ' + (notes || 'None');
+            
+            const success = await sendTelegramMessage(message);
+            
+            if (success) {
+                showStatus('Reminder set successfully! Notification sent to Telegram.', 'success');
+                
+                // Speak the summary if voice is enabled
+                if (voiceEnabled.value === 'yes') {
+                    const summary = createVoiceSummary(reminder);
+                    speakText(summary);
+                }
+                
+                // Clear form
+                selectedTablets = [];
+                tabletOptions.forEach(opt => opt.classList.remove('selected'));
+                customTabletInput.style.display = 'none';
+                customTabletInput.value = '';
+                notesInput.value = '';
+            } else {
+                showStatus('Reminder saved locally, but failed to send Telegram notification', 'error');
+            }
+        });
+        
+        // Test Telegram notification
+        testTelegramBtn.addEventListener('click', async () => {
+            const message = '🔔 <b>Test Notification</b>\n\n' +
+                       'This is a test message from your Tablet Reminder app.\n' +
+                       'If you received this, your Telegram notifications are working correctly!';
+            
+            const success = await sendTelegramMessage(message);
+            
+            if (success) {
+                showStatus('Test message sent successfully to Telegram!', 'success');
+            } else {
+                showStatus('Failed to send test message. Check your credentials.', 'error');
+            }
+        });
+        
+        // Test voice summary
+        testVoiceBtn.addEventListener('click', () => {
+            const testReminder = {
+                time: "14:30",
+                tablets: ["Paracetamol", "Vitamin C"],
+                frequency: "daily",
+                notes: "Take after lunch"
+            };
+            
+            const summary = createVoiceSummary(testReminder);
+            const success = speakText(summary);
+            
+            if (!success) {
+                showStatus('Voice synthesis not available or disabled', 'error');
+            }
+        });
+        
+        // Load existing reminders on page load
+        function loadReminders() {
+            const reminders = JSON.parse(localStorage.getItem('tabletReminders') || '[]');
+            
+            if (reminders.length > 0) {
+                noReminders.style.display = 'none';
+                reminders.forEach(addReminderToList);
+            }
+        }
+        
+        // Check for due reminders every minute
+        function checkDueReminders() {
+            const now = new Date();
+            const currentTime = now.getHours().toString().padStart(2, '0') + ':' + 
+                              now.getMinutes().toString().padStart(2, '0');
+            
+            const reminders = JSON.parse(localStorage.getItem('tabletReminders') || '[]');
+            
+            reminders.forEach(reminder => {
+                if (reminder.time === currentTime) {
+                    const message = "⏰ <b>REMINDER: Time to take your tablets!</b>\n\n" +
+                                   "💊 Tablets: " + reminder.tablets.join(', ') + "\n" +
+                                   "📝 Notes: " + (reminder.notes || 'None') + "\n\n" +
+                                   "Don't forget to take your medication!";
+                    
+                    sendTelegramMessage(message);
+                    
+                    // Speak the reminder if voice is enabled
+                    if (voiceEnabled.value === 'yes') {
+                        const alertText = `Reminder! Time to take your tablets: ${reminder.tablets.join(', ')}. ${reminder.notes || ''}`;
+                        speakText(alertText);
+                    }
+                }
+            });
+        }
+        
+        // Initialize
+        loadReminders();
+        
+        // Check for due reminders every minute
+        setInterval(checkDueReminders, 60000);
+        
+        // Initial check
+        checkDueReminders();
+        
+        // Load voices when they become available
+        if (speechSynthesis) {
+            speechSynthesis.onvoiceschanged = () => {
+                // Voices are now loaded
+            };
+        }
+    </script>
+</body>
+</html>

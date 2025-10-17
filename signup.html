@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HealthTech | Sign Up</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Import Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --neon-blue: #00c6ff;
+      --neon-purple: #7700ff;
+      --neon-cyan: #00ffea;
+      --dark-bg: #0a0e17;
+      --card-bg: #12192e;
+      --glow-intensity: 0 0 10px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--dark-bg);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-image:
+        radial-gradient(circle at 10% 20%, rgba(0, 198, 255, 0.05) 0%, transparent 20%),
+        radial-gradient(circle at 90% 80%, rgba(119, 0, 255, 0.05) 0%, transparent 20%);
+      overflow-x: hidden;
+      padding: 20px;
+    }
+
+    .container {
+      display: flex;
+      width: 100%;
+      max-width: 1000px;
+      height: 600px;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(0, 198, 255, 0.2);
+    }
+
+    .left-panel {
+      flex: 1;
+      background: linear-gradient(135deg, var(--neon-purple), var(--neon-blue));
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .left-panel::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+      animation: pulse 8s infinite linear;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo span {
+      color: var(--neon-cyan);
+    }
+
+    .tagline {
+      font-size: 18px;
+      margin-bottom: 30px;
+      line-height: 1.6;
+      position: relative;
+      z-index: 1;
+    }
+
+    .features {
+      list-style: none;
+      margin-top: 30px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .features li {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+    }
+
+    .features li::before {
+      content: '✓';
+      color: var(--neon-cyan);
+      font-weight: bold;
+      margin-right: 10px;
+      font-size: 18px;
+    }
+
+    .right-panel {
+      flex: 1;
+      background-color: var(--card-bg);
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .signup-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .signup-header h2 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      background: linear-gradient(to right, var(--neon-blue), var(--neon-cyan));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .signup-header p {
+      color: #a0a0a0;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 15px;
+      background-color: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: white;
+      font-size: 15px;
+      transition: all 0.3s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--neon-blue);
+      box-shadow: 0 0 10px rgba(0, 198, 255, 0.3);
+    }
+
+    .signup-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(to right, var(--neon-purple), var(--neon-blue));
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(119, 0, 255, 0.3);
+    }
+
+    .signup-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(119, 0, 255, 0.4);
+    }
+
+    .signup-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .login-link {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+
+    .login-link a {
+      color: var(--neon-cyan);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .login-link a:hover {
+      text-decoration: underline;
+    }
+
+    .message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+      display: none;
+    }
+
+    .error {
+      background-color: rgba(255, 0, 0, 0.1);
+      border: 1px solid rgba(255, 0, 0, 0.3);
+      color: #ff6b6b;
+    }
+
+    .success {
+      background-color: rgba(0, 255, 0, 0.1);
+      border: 1px solid rgba(0, 255, 0, 0.3);
+      color: #6bff6b;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, .3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 10px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .name-fields {
+      display: flex;
+      gap: 15px;
+    }
+
+    .name-fields .form-group {
+      flex: 1;
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        flex-direction: column;
+        height: auto;
+        max-width: 500px;
+      }
+
+      .left-panel {
+        padding: 30px;
+      }
+
+      .right-panel {
+        padding: 30px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .name-fields {
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .signup-header h2 {
+        font-size: 26px;
+      }
+
+      body {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="left-panel">
+      <div class="logo">Health<span>Tech</span></div>
+      <p class="tagline">Join thousands of healthcare professionals and patients using our innovative platform.</p>
+      <ul class="features">
+        <li>Secure HIPAA-compliant data storage</li>
+        <li>Real-time health monitoring</li>
+        <li>AI-powered health insights</li>
+        <li>Connect with healthcare providers</li>
+        <li>Personalized health recommendations</li>
+      </ul>
+    </div>
+
+    <div class="right-panel">
+      <div class="signup-header">
+        <h2>Create Account</h2>
+        <p>Join HealthTech today and take control of your health</p>
+      </div>
+
+      <div id="message" class="message"></div>
+
+      <form id="signupForm">
+        <div class="name-fields">
+          <div class="form-group">
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" required>
+          </div>
+
+          <div class="form-group">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" required>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input type="password" id="confirmPassword" required>
+        </div>
+
+        <button type="submit" class="signup-btn" id="signupBtn">
+          <span id="btnText">Create Account</span>
+          <div id="btnLoading" class="loading" style="display: none;"></div>
+        </button>
+      </form>
+
+      <div class="login-link">
+        Already have an account? <a href="login.html" id="loginLink">Sign in</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Firebase initialization (your config)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBdSoee19xeRhejBcvGJRiAIiMEEkS2wKA",
+      authDomain: "lifelink-e7e3a.firebaseapp.com",
+      projectId: "lifelink-e7e3a",
+      storageBucket: "lifelink-e7e3a.firebasestorage.app",
+      messagingSenderId: "56154827817",
+      appId: "1:56154827817:web:d834413e1dc99f6d124038",
+      measurementId: "G-F9S6YWYWCG"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const signupForm = document.getElementById('signupForm');
+    const messageDiv = document.getElementById('message');
+    const firstNameInput = document.getElementById('firstName');
+    const lastNameInput = document.getElementById('lastName');
+
+    function showMessage(msg, type = 'success') {
+      messageDiv.textContent = msg;
+      messageDiv.className = 'message ' + type;
+      messageDiv.style.display = 'block';
+      setTimeout(() => messageDiv.style.display = 'none', 5000);
+    }
+
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const firstName = firstNameInput.value.trim();
+      const lastName = lastNameInput.value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      // Basic validation
+      if (!firstName || !lastName || !email || !password || !confirmPassword) {
+        showMessage('Please fill all fields', 'error');
+        return;
+      }
+      if (password !== confirmPassword) {
+        showMessage('Passwords do not match', 'error');
+        return;
+      }
+
+      try {
+        // First check if email exists
+        const emailCheck = await auth.fetchSignInMethodsForEmail(email);
+        if (emailCheck.length > 0) {
+          showMessage('Email already in use. Please use a different email.', 'error');
+          return;
+        }
+
+        // Create user in Auth
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // Update display name and save user data
+        await Promise.all([
+          user.updateProfile({ displayName: `${firstName} ${lastName}` }),
+          db.collection('users').doc(user.uid).set({
+            firstName,
+            lastName,
+            fullName: `${firstName} ${lastName}`,
+            email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          })
+        ]);
+
+        // Redirect to homepage immediately
+        window.location.href = 'homepage.html';
+
+      } catch (error) {
+        console.error('Signup error:', error);
+        if (error.code === 'auth/weak-password') {
+          showMessage('Password should be at least 6 characters', 'error');
+        } else {
+          showMessage('Error creating account. Please try again.', 'error');
+        }
+      }
+    });
+
+    // No need for connection test on page load
+  </script>
+</body>
+
+</html>

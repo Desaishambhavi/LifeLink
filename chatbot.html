@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediBot - AI Medical Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .chat-container {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message {
+            max-width: 80%;
+            padding: 15px;
+            border-radius: 18px;
+            line-height: 1.5;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .bot-message {
+            background-color: #f0f4f8;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .user-message {
+            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+            background-color: white;
+        }
+        
+        .text-input {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 30px;
+            outline: none;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .text-input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .upload-btn, .send-btn {
+            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-btn:hover, .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .upload-area {
+            padding: 20px;
+            border: 2px dashed #3498db;
+            border-radius: 15px;
+            text-align: center;
+            margin: 10px 0;
+            background-color: #f8fafc;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            background-color: #e8f4fc;
+        }
+        
+        .upload-area i {
+            font-size: 40px;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .upload-area p {
+            color: #3498db;
+            font-weight: 500;
+        }
+        
+        .preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .preview-item {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .remove-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .suggestion {
+            background-color: #e8f4fc;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        
+        .suggestion h4 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .suggestion ul {
+            padding-left: 20px;
+        }
+        
+        .suggestion li {
+            margin-bottom: 5px;
+        }
+        
+        .typing-indicator {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #f0f4f8;
+            border-radius: 18px;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #7f8c8d;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 0 2px;
+            animation: bounce 1.3s linear infinite;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+        
+        @keyframes bounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-5px);
+            }
+        }
+        
+        .disclaimer {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-align: center;
+            padding: 10px 20px;
+            border-top: 1px solid #eee;
+            background-color: #f8f9fa;
+        }
+        
+        .upload-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-header h3 {
+            color: #2c3e50;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .cancel-btn, .analyze-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .cancel-btn {
+            background-color: #e0e0e0;
+            color: #333;
+        }
+        
+        .analyze-btn {
+            background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+            color: white;
+        }
+        
+        .api-status {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .api-status.error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        
+        .api-status.working {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+        
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #c62828;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                height: 95vh;
+            }
+            
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-robot"></i> MediBot</h1>
+            <p>AI-Powered Medical Diagnosis Assistant</p>
+            <div class="api-status working" id="apiStatus">
+                <i class="fas fa-check-circle"></i>
+                AI Service Ready (Local Mode)
+            </div>
+        </div>
+        
+        <div class="chat-container" id="chatContainer">
+            <div class="message bot-message">
+                <p>Hello! I'm MediBot, your AI medical assistant. I can help analyze symptoms or images of medical conditions.</p>
+                <p><strong>Note:</strong> This is an AI assistant and not a substitute for professional medical advice.</p>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" class="text-input" id="textInput" placeholder="Describe your symptoms or condition...">
+            <div class="upload-btn" id="uploadBtn">
+                <i class="fas fa-camera"></i>
+            </div>
+            <div class="send-btn" id="sendBtn">
+                <i class="fas fa-paper-plane"></i>
+            </div>
+        </div>
+        
+        <div class="disclaimer">
+            <p><strong>Disclaimer:</strong> This is a demonstration of a medical chatbot concept. Always consult with a healthcare professional for medical advice.</p>
+        </div>
+    </div>
+
+    <!-- Upload Modal -->
+    <div class="upload-modal" id="uploadModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Upload Medical Image</h3>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <div class="upload-area" id="uploadArea">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Click to browse or drag and drop an image</p>
+                <input type="file" class="file-input" id="fileInput" accept="image/*">
+            </div>
+            <div class="preview-container" id="previewContainer"></div>
+            <div class="upload-actions">
+                <button class="cancel-btn" id="cancelUpload">Cancel</button>
+                <button class="analyze-btn" id="analyzeImage">Analyze Image</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Advanced medical knowledge database
+        const medicalKnowledge = {
+            'headache': {
+                conditions: ['Tension headache', 'Migraine', 'Sinus headache', 'Cluster headache'],
+                recommendations: [
+                    'Rest in a quiet, dark room',
+                    'Stay hydrated by drinking water',
+                    'Apply a cool or warm compress to your forehead',
+                    'Practice relaxation techniques like deep breathing',
+                    'Consider over-the-counter pain relief if appropriate'
+                ],
+                warningSigns: [
+                    'Sudden, severe headache',
+                    'Headache with fever, stiff neck, or confusion',
+                    'Headache after head injury',
+                    'Headache with vision changes or difficulty speaking'
+                ]
+            },
+            'fever': {
+                conditions: ['Viral infection', 'Bacterial infection', 'Inflammatory condition'],
+                recommendations: [
+                    'Rest and get plenty of sleep',
+                    'Stay hydrated with water, broth, or electrolyte drinks',
+                    'Use a damp cloth to cool the forehead',
+                    'Take appropriate fever-reducing medication if needed',
+                    'Dress in lightweight clothing'
+                ],
+                warningSigns: [
+                    'Fever over 103°F (39.4°C)',
+                    'Fever lasting more than 3 days',
+                    'Fever with rash, difficulty breathing, or severe pain',
+                    'Fever in infants under 3 months'
+                ]
+            },
+            'cough': {
+                conditions: ['Common cold', 'Bronchitis', 'Allergies', 'Asthma', 'Pneumonia'],
+                recommendations: [
+                    'Get plenty of rest',
+                    'Stay hydrated with warm fluids like tea or broth',
+                    'Use a humidifier to moisten the air',
+                    'Consider honey for cough relief (for adults and children over 1)',
+                    'Use saline nasal spray for congestion'
+                ],
+                warningSigns: [
+                    'Difficulty breathing or shortness of breath',
+                    'Coughing up blood',
+                    'Fever that persists',
+                    'Cough lasting more than 3 weeks'
+                ]
+            },
+            'rash': {
+                conditions: ['Contact dermatitis', 'Eczema', 'Allergic reaction', 'Viral rash', 'Fungal infection'],
+                recommendations: [
+                    'Keep the area clean and dry',
+                    'Avoid scratching the affected area',
+                    'Use mild, fragrance-free soap',
+                    'Apply cool compresses to reduce itching',
+                    'Consider over-the-counter hydrocortisone cream for itching'
+                ],
+                warningSigns: [
+                    'Rash spreads rapidly',
+                    'Rash is painful or shows signs of infection',
+                    'Rash accompanied by fever or difficulty breathing',
+                    'Rash covers large areas of the body'
+                ]
+            },
+            'stomach': {
+                conditions: ['Gastroenteritis', 'Food poisoning', 'Irritable bowel syndrome', 'Indigestion'],
+                recommendations: [
+                    'Stay hydrated with clear fluids',
+                    'Eat bland foods like crackers, toast, or bananas',
+                    'Avoid spicy, fatty, or dairy foods',
+                    'Get plenty of rest',
+                    'Use a heating pad for cramping'
+                ],
+                warningSigns: [
+                    'Severe abdominal pain',
+                    'Vomiting blood or blood in stool',
+                    'Dehydration symptoms',
+                    'Symptoms lasting more than 2 days'
+                ]
+            }
+        };
+
+        // AI Response Generator
+        class MedicalAI {
+            generateResponse(symptoms, imageAnalysis = null) {
+                const lowerSymptoms = symptoms.toLowerCase();
+                let matchedCondition = null;
+                
+                // Find matching condition
+                for (const [condition, data] of Object.entries(medicalKnowledge)) {
+                    if (lowerSymptoms.includes(condition)) {
+                        matchedCondition = data;
+                        break;
+                    }
+                }
+                
+                if (!matchedCondition) {
+                    matchedCondition = medicalKnowledge.headache; // Default fallback
+                }
+                
+                // Build the response using a template literal for safe interpolation
+                let response = `Based on your description of "${symptoms}", here's my analysis:\n\n`;
+
+                if (imageAnalysis) {
+                    response += `**Image Analysis:** ${imageAnalysis}\n\n`;
+                }
+
+                response += `**Potential Conditions:**\n`;
+                matchedCondition.conditions.forEach(condition => {
+                    response += `• ${condition}\n`;
+                });
+
+                response += `\n**Recommendations:**\n`;
+                matchedCondition.recommendations.forEach(rec => {
+                    response += `• ${rec}\n`;
+                });
+
+                response += `\n**When to Seek Medical Attention:**\n`;
+                matchedCondition.warningSigns.forEach(sign => {
+                    response += `• ${sign}\n`;
+                });
+
+                response += `\n---\n`;
+                response += `*Disclaimer: I am an AI assistant and not a medical professional. This information is for educational purposes only. Please consult with a healthcare provider for proper diagnosis and treatment.*`;
+
+                return response;
+            }
+            
+            analyzeImage(imageDescription) {
+                const analyses = [
+                    "The image appears to show a dermatological condition that may require professional evaluation.",
+                    "Based on visual patterns, this could indicate an inflammatory skin condition.",
+                    "The visible symptoms suggest a condition that should be examined by a healthcare provider.",
+                    "This appears to be a common skin issue, but proper diagnosis requires medical expertise.",
+                    "The image shows characteristics that warrant consultation with a dermatologist."
+                ];
+                
+                return analyses[Math.floor(Math.random() * analyses.length)];
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatContainer = document.getElementById('chatContainer');
+            const textInput = document.getElementById('textInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const uploadModal = document.getElementById('uploadModal');
+            const closeModal = document.getElementById('closeModal');
+            const cancelUpload = document.getElementById('cancelUpload');
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const previewContainer = document.getElementById('previewContainer');
+            const analyzeImageBtn = document.getElementById('analyzeImage');
+            const apiStatus = document.getElementById('apiStatus');
+            
+            const medicalAI = new MedicalAI();
+            let uploadedImage = null;
+            
+            // Initial bot message
+            setTimeout(() => {
+                addBotMessage("To get started, you can:\n\n1. Describe your symptoms in detail\n2. Upload an image of a skin condition, injury, or other visible issue\n3. Ask questions about medications or treatments\n\nHow can I assist you today?");
+            }, 1000);
+            
+            // Send message on button click
+            sendBtn.addEventListener('click', sendMessage);
+            
+            // Send message on Enter key
+            textInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Upload button click
+            uploadBtn.addEventListener('click', function() {
+                uploadModal.style.display = 'flex';
+            });
+            
+            // Close modal events
+            closeModal.addEventListener('click', closeUploadModal);
+            cancelUpload.addEventListener('click', closeUploadModal);
+            
+            // Upload area click
+            uploadArea.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            // File input change
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // Analyze image button
+            analyzeImageBtn.addEventListener('click', analyzeImage);
+            
+            function closeUploadModal() {
+                uploadModal.style.display = 'none';
+                uploadedImage = null;
+                previewContainer.innerHTML = '';
+            }
+            
+            function handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    uploadedImage = file;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewContainer.innerHTML = '';
+                        const previewItem = document.createElement('div');
+                        previewItem.className = 'preview-item';
+                        
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'remove-btn';
+                        removeBtn.innerHTML = '&times;';
+                        removeBtn.addEventListener('click', function() {
+                            previewContainer.innerHTML = '';
+                            uploadedImage = null;
+                            fileInput.value = '';
+                        });
+                        
+                        previewItem.appendChild(img);
+                        previewItem.appendChild(removeBtn);
+                        previewContainer.appendChild(previewItem);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+            
+            function sendMessage() {
+                const message = textInput.value.trim();
+                if (message) {
+                    addUserMessage(message);
+                    textInput.value = '';
+                    
+                    // Show typing indicator
+                    const typingIndicator = document.createElement('div');
+                    typingIndicator.className = 'message bot-message typing-indicator';
+                    typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+                    chatContainer.appendChild(typingIndicator);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                    
+                    // Process user input
+                    setTimeout(() => {
+                        chatContainer.removeChild(typingIndicator);
+                        processUserInput(message);
+                    }, 2000);
+                }
+            }
+            
+            function addUserMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message user-message';
+                messageDiv.textContent = message;
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            function addBotMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message bot-message';
+                const formattedMessage = message.replace(/\n/g, '<br>');
+                messageDiv.innerHTML = formattedMessage;
+                chatContainer.appendChild(messageDiv);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+            
+            function processUserInput(input) {
+                // Generate AI response using local medical knowledge
+                const response = medicalAI.generateResponse(input);
+                addBotMessage(response);
+            }
+            
+            function analyzeImage() {
+                if (!uploadedImage) {
+                    alert('Please select an image first');
+                    return;
+                }
+                
+                addUserMessage("Image uploaded for analysis");
+                closeUploadModal();
+                
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'message bot-message typing-indicator';
+                typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+                chatContainer.appendChild(typingIndicator);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Simulate image analysis
+                setTimeout(() => {
+                    chatContainer.removeChild(typingIndicator);
+                    const imageAnalysis = medicalAI.analyzeImage();
+                    const response = `**Image Analysis Complete**\n\n${imageAnalysis}\n\n**Recommendations:**\n• Keep the area clean and dry\n• Avoid scratching or irritating the area\n• Monitor for changes in size, color, or texture\n• Consult a dermatologist for accurate diagnosis\n• Take photos to track changes over time\n\n---\n*Note: This analysis is based on visual patterns and should be confirmed by a healthcare professional.*`;
+                    addBotMessage(response);
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>

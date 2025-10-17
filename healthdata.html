@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeLink - Futuristic Healthcare</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Include jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --neon-blue: #00c6ff;
+            --neon-purple: #7700ff;
+            --neon-cyan: #00ffea;
+            --dark-bg: #0a0e17;
+            --card-bg: #12192e;
+            --glow-intensity: 0 0 10px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #fff;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(119, 0, 255, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(0, 198, 255, 0.1) 0%, transparent 20%);
+        }
+
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            background-color: rgba(10, 14, 23, 0.9);
+            border-bottom: 1px solid rgba(0, 198, 255, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: var(--glow-intensity) rgba(119, 0, 255, 0.5);
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+        }
+
+        nav a:hover {
+            color: var(--neon-cyan);
+            text-shadow: var(--glow-intensity) var(--neon-cyan);
+        }
+
+        /* Page Container */
+        .page {
+            padding: 2rem 5%;
+        }
+
+        /* Health Data Page */
+        .home-title {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: var(--glow-intensity) rgba(119, 0, 255, 0.5);
+        }
+
+        .timeline {
+            margin: 3rem 0;
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 30px;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background: linear-gradient(to bottom, var(--neon-blue), var(--neon-purple));
+            box-shadow: var(--glow-intensity) var(--neon-blue);
+        }
+
+        .timeline-item {
+            display: flex;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .timeline-date {
+            min-width: 100px;
+            padding: 0.5rem 1rem;
+            background: var(--card-bg);
+            border-radius: 20px;
+            text-align: center;
+            margin-right: 2rem;
+            box-shadow: 0 0 10px rgba(0, 198, 255, 0.2);
+            border: 1px solid rgba(0, 198, 255, 0.2);
+            z-index: 1;
+        }
+
+        .timeline-content {
+            flex: 1;
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.1);
+            border: 1px solid rgba(0, 198, 255, 0.1);
+            transform: translateZ(0);
+            transition: all 0.3s ease;
+        }
+
+        .timeline-content:hover {
+            transform: translateX(10px) translateZ(10px);
+            box-shadow: 0 0 20px rgba(0, 198, 255, 0.3);
+        }
+
+        .timeline-icon {
+            position: absolute;
+            left: 18px;
+            top: 15px;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: var(--neon-purple);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 10px var(--neon-purple);
+            z-index: 1;
+        }
+
+        .card-status {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            color: white;
+            box-shadow: 0 0 15px rgba(119, 0, 255, 0.5);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 20px rgba(119, 0, 255, 0.7);
+        }
+
+        /* 3D Elements */
+        .floating-element {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            opacity: 0.2;
+            filter: blur(20px);
+            animation: float 8s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        .element-1 {
+            top: 20%;
+            left: 5%;
+            width: 150px;
+            height: 150px;
+            animation-delay: 0s;
+        }
+
+        .element-2 {
+            top: 60%;
+            right: 10%;
+            width: 120px;
+            height: 120px;
+            animation-delay: 1s;
+        }
+
+        .element-3 {
+            bottom: 10%;
+            left: 20%;
+            width: 80px;
+            height: 80px;
+            animation-delay: 2s;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            nav ul {
+                gap: 1rem;
+            }
+            
+            .home-title {
+                font-size: 2.5rem;
+            }
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--neon-cyan);
+        }
+
+        .loading i {
+            margin-right: 10px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="logo">LifeLink</div>
+        <nav>
+            <ul>
+                <li><a href="#" class="nav-link">Home</a></li>
+                <li><a href="#" class="nav-link">Dashboard</a></li>
+                <li><a href="#" class="nav-link">Health Data</a></li>
+                <li><a href="#" class="nav-link">Alerts</a></li>
+                <li><a href="#" class="nav-link">Profile</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- 3D Floating Elements -->
+    <div class="floating-element element-1"></div>
+    <div class="floating-element element-2"></div>
+    <div class="floating-element element-3"></div>
+
+    <!-- Health Data Page -->
+    <section id="health" class="page">
+        <h1 class="home-title">Medical History & Records</h1>
+        
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="timeline-date">05/12/2024</div>
+                <div class="timeline-icon"></div>
+                <div class="timeline-content">
+                    <h3>Routine Checkup</h3>
+                    <p>All metrics normal. Doctor noted excellent health maintenance and recommended continuing current diet and exercise regimen.</p>
+                    <div class="card-status" style="background: rgba(0, 255, 0, 0.1); color: #00ff00;">Completed</div>
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-date">02/08/2024</div>
+                <div class="timeline-icon"></div>
+                <div class="timeline-content">
+                    <h3>Elevated Blood Pressure</h3>
+                    <p>Reading 150/95 detected during routine monitoring. Recommended reducing sodium intake and increasing cardio exercise.</p>
+                    <div class="card-status" style="background: rgba(255, 165, 0, 0.1); color: #ffa500;">Monitoring</div>
+                </div>
+            </div>
+            
+            <div class="timeline-item">
+                <div class="timeline-date">10/05/2023</div>
+                <div class="timeline-icon"></div>
+                <div class="timeline-content">
+                    <h3>Hospital Visit</h3>
+                    <p>Mild dehydration treated with IV fluids. Recommended increasing daily water intake to at least 2.5L during summer months.</p>
+                    <div class="card-status" style="background: rgba(0, 255, 0, 0.1); color: #00ff00;">Resolved</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <button class="btn btn-primary" id="downloadBtn">Download Full Report</button>
+            <div class="loading" id="loadingIndicator">
+                <i class="fas fa-spinner"></i> Generating PDF...
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const downloadBtn = document.getElementById('downloadBtn');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            
+            downloadBtn.addEventListener('click', function() {
+                // Show loading indicator
+                loadingIndicator.style.display = 'block';
+                
+                // Use setTimeout to allow the UI to update before generating the PDF
+                setTimeout(generatePDF, 100);
+            });
+            
+            function generatePDF() {
+                // Initialize jsPDF
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Set document properties
+                doc.setProperties({
+                    title: 'LifeLink Medical Report',
+                    subject: 'Medical History & Records',
+                    author: 'LifeLink Healthcare',
+                    keywords: 'medical, health, report',
+                    creator: 'LifeLink'
+                });
+                
+                // Add header
+                doc.setFontSize(20);
+                doc.setTextColor(0, 198, 255);
+                doc.text('LifeLink Medical Report', 20, 30);
+                
+                doc.setFontSize(12);
+                doc.setTextColor(100, 100, 100);
+                doc.text('Generated on: ' + new Date().toLocaleDateString(), 20, 40);
+                
+                // Add patient information section
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text('Patient Information', 20, 60);
+                
+                doc.setFontSize(12);
+                doc.text('Name: John Doe', 20, 75);
+                doc.text('Date of Birth: 01/15/1985', 20, 85);
+                doc.text('Patient ID: LL-2024-001', 20, 95);
+                
+                // Add medical history section
+                doc.setFontSize(16);
+                doc.text('Medical History', 20, 115);
+                
+                // Add medical records
+                let yPosition = 130;
+                
+                // Record 1
+                doc.setFontSize(12);
+                doc.setTextColor(0, 0, 0);
+                doc.text('Date: 05/12/2024', 20, yPosition);
+                doc.text('Type: Routine Checkup', 20, yPosition + 7);
+                doc.text('Details: All metrics normal. Doctor noted excellent health', 20, yPosition + 17);
+                doc.text('maintenance and recommended continuing current diet', 20, yPosition + 24);
+                doc.text('and exercise regimen.', 20, yPosition + 31);
+                doc.setTextColor(0, 150, 0);
+                doc.text('Status: Completed', 20, yPosition + 41);
+                
+                yPosition += 60;
+                
+                // Check if we need a new page
+                if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = 30;
+                }
+                
+                // Record 2
+                doc.setTextColor(0, 0, 0);
+                doc.text('Date: 02/08/2024', 20, yPosition);
+                doc.text('Type: Elevated Blood Pressure', 20, yPosition + 7);
+                doc.text('Details: Reading 150/95 detected during routine monitoring.', 20, yPosition + 17);
+                doc.text('Recommended reducing sodium intake and increasing', 20, yPosition + 24);
+                doc.text('cardio exercise.', 20, yPosition + 31);
+                doc.setTextColor(255, 165, 0);
+                doc.text('Status: Monitoring', 20, yPosition + 41);
+                
+                yPosition += 60;
+                
+                // Check if we need a new page
+                if (yPosition > 250) {
+                    doc.addPage();
+                    yPosition = 30;
+                }
+                
+                // Record 3
+                doc.setTextColor(0, 0, 0);
+                doc.text('Date: 10/05/2023', 20, yPosition);
+                doc.text('Type: Hospital Visit', 20, yPosition + 7);
+                doc.text('Details: Mild dehydration treated with IV fluids.', 20, yPosition + 17);
+                doc.text('Recommended increasing daily water intake to at', 20, yPosition + 24);
+                doc.text('least 2.5L during summer months.', 20, yPosition + 31);
+                doc.setTextColor(0, 150, 0);
+                doc.text('Status: Resolved', 20, yPosition + 41);
+                
+                // Add footer
+                const pageCount = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(10);
+                    doc.setTextColor(100, 100, 100);
+                    doc.text('Page ' + i + ' of ' + pageCount, 105, 285, { align: 'center' });
+                    doc.text('LifeLink Healthcare - Confidential Medical Document', 105, 290, { align: 'center' });
+                }
+                
+                // Save the PDF
+                doc.save('LifeLink-Medical-Report.pdf');
+                
+                // Hide loading indicator
+                loadingIndicator.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

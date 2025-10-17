@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeLink - Real-Time Health Monitoring</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --neon-blue: #00c6ff;
+            --neon-purple: #7700ff;
+            --neon-cyan: #00ffea;
+            --dark-bg: #0a0e17;
+            --card-bg: #12192e;
+            --glow-intensity: 0 0 10px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #fff;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(119, 0, 255, 0.1) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(0, 198, 255, 0.1) 0%, transparent 20%);
+        }
+
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 5%;
+            background-color: rgba(10, 14, 23, 0.9);
+            border-bottom: 1px solid rgba(0, 198, 255, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: var(--glow-intensity) rgba(119, 0, 255, 0.5);
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+        }
+
+        nav a:hover {
+            color: var(--neon-cyan);
+            text-shadow: var(--glow-intensity) var(--neon-cyan);
+        }
+
+        /* Page Container */
+        .page {
+            padding: 2rem 5%;
+        }
+
+        /* Dashboard Page */
+        .home-title {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: var(--glow-intensity) rgba(119, 0, 255, 0.5);
+        }
+
+        .home-subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: #a0aec0;
+            line-height: 1.6;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .health-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 1.5rem;
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.1);
+            border: 1px solid rgba(0, 198, 255, 0.1);
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+            transform: translateZ(0);
+        }
+
+        .health-card:hover {
+            transform: translateY(-5px) translateZ(10px);
+            box-shadow: 0 0 20px rgba(0, 198, 255, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .card-icon {
+            font-size: 1.5rem;
+            color: var(--neon-cyan);
+        }
+
+        .card-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin: 1rem 0;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-cyan));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .card-status {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-normal {
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff00;
+        }
+
+        .status-warning {
+            background: rgba(255, 165, 0, 0.1);
+            color: #ffa500;
+        }
+
+        .status-critical {
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff4757;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .gps-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(0, 198, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(0, 198, 255, 0.2);
+        }
+
+        .gps-data {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .gps-label {
+            color: var(--neon-cyan);
+            font-weight: 600;
+        }
+
+        /* AI Analysis Section */
+        .ai-analysis {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.1);
+            border: 1px solid rgba(0, 198, 255, 0.2);
+        }
+
+        .ai-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .ai-icon {
+            font-size: 2rem;
+            color: var(--neon-cyan);
+            margin-right: 1rem;
+        }
+
+        .ai-suggestions {
+            background: rgba(0, 198, 255, 0.05);
+            border-radius: 10px;
+            padding: 1.5rem;
+            border: 1px solid rgba(0, 198, 255, 0.2);
+            min-height: 100px;
+        }
+
+        .suggestion-item {
+            margin-bottom: 0.8rem;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border-left: 3px solid var(--neon-cyan);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .suggestion-text {
+            flex: 1;
+        }
+
+        .speak-btn {
+            background: rgba(0, 198, 255, 0.2);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 0.5rem;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .speak-btn:hover {
+            background: rgba(0, 198, 255, 0.4);
+            transform: scale(1.1);
+        }
+
+        .speak-btn.speaking {
+            background: var(--neon-cyan);
+            color: var(--dark-bg);
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        .speak-all-btn {
+            background: rgba(0, 198, 255, 0.1);
+            border: 1px solid var(--neon-cyan);
+            color: var(--neon-cyan);
+            padding: 0.6rem 1.2rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .speak-all-btn:hover {
+            background: rgba(0, 198, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .speak-all-btn.speaking {
+            background: var(--neon-cyan);
+            color: var(--dark-bg);
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            color: white;
+            box-shadow: 0 0 15px rgba(119, 0, 255, 0.5);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px rgba(119, 0, 255, 0.7);
+        }
+
+        .last-update {
+            text-align: center;
+            margin-top: 2rem;
+            color: #a0aec0;
+            font-size: 0.9rem;
+        }
+
+        .loading {
+            color: var(--neon-cyan);
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* 3D Elements */
+        .floating-element {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+            opacity: 0.2;
+            filter: blur(20px);
+            animation: float 8s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        .element-1 {
+            top: 20%;
+            left: 5%;
+            width: 150px;
+            height: 150px;
+            animation-delay: 0s;
+        }
+
+        .element-2 {
+            top: 60%;
+            right: 10%;
+            width: 120px;
+            height: 120px;
+            animation-delay: 1s;
+        }
+
+        .element-3 {
+            bottom: 10%;
+            left: 20%;
+            width: 80px;
+            height: 80px;
+            animation-delay: 2s;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            nav ul {
+                gap: 1rem;
+            }
+            
+            .home-title {
+                font-size: 2.5rem;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="logo">LifeLink</div>
+        <nav>
+            <ul>
+                <li><a href="homepage.html" class="nav-link">Home</a></li>
+                <li><a href="https://lifelink-ai-vnq7yhzfeydugyzfnqfafw.streamlit.app/" class="nav-link">Health Data</a></li>
+                <li><a href="profile.html" class="nav-link">Profile</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- 3D Floating Elements -->
+    <div class="floating-element element-1"></div>
+    <div class="floating-element element-2"></div>
+    <div class="floating-element element-3"></div>
+
+    <!-- Dashboard Page -->
+    <section id="dashboard" class="page">
+        <h1 class="home-title">Real-Time Health Monitoring</h1>
+        <p class="home-subtitle">Track your vital signs and health metrics in real-time with advanced medical IoT sensors.</p>
+        
+        <div class="dashboard-grid">
+            <div class="health-card">
+                <div class="card-header">
+                    <h3 class="card-title">Heart Rate</h3>
+                    <div class="card-icon"><i class="fas fa-heart"></i></div>
+                </div>
+                <div class="card-value" id="heartRateValue">-- BPM</div>
+                <div class="card-status" id="heartRateStatus">Loading...</div>
+                <div class="progress-bar">
+                    <div class="progress" id="heartRateProgress" style="width: 0%; background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));"></div>
+                </div>
+            </div>
+            
+            <div class="health-card">
+                <div class="card-header">
+                    <h3 class="card-title">Oxygen Level</h3>
+                    <div class="card-icon"><i class="fas fa-lungs"></i></div>
+                </div>
+                <div class="card-value" id="spo2Value">--%</div>
+                <div class="card-status" id="spo2Status">Loading...</div>
+                <div class="progress-bar">
+                    <div class="progress" id="spo2Progress" style="width: 0%; background: linear-gradient(45deg, var(--neon-cyan), var(--neon-blue));"></div>
+                </div>
+            </div>
+            
+            <div class="health-card">
+                <div class="card-header">
+                    <h3 class="card-title">GPS Location</h3>
+                    <div class="card-icon"><i class="fas fa-map-marker-alt"></i></div>
+                </div>
+                <div class="gps-info">
+                    <div class="gps-data">
+                        <span class="gps-label">Latitude:</span>
+                        <span id="gpsLatitude">--</span>
+                    </div>
+                    <div class="gps-data">
+                        <span class="gps-label">Longitude:</span>
+                        <span id="gpsLongitude">--</span>
+                    </div>
+                    <div class="gps-data">
+                        <span class="gps-label">Satellites:</span>
+                        <span id="gpsSatellites">--</span>
+                    </div>
+                </div>
+                <div class="card-status" id="gpsStatus">Waiting for GPS data</div>
+            </div>
+        </div>
+
+        <!-- AI Analysis Section -->
+        <div class="ai-analysis">
+            <div class="ai-header">
+                <div class="ai-icon"><i class="fas fa-robot"></i></div>
+                <div>
+                    <h2>AI Health Analysis</h2>
+                    <p>Get personalized health suggestions based on your current vitals</p>
+                </div>
+            </div>
+            
+            <div class="ai-suggestions" id="aiSuggestions">
+                <div class="loading">Waiting for health data to generate suggestions...</div>
+            </div>
+            
+            <button class="btn btn-primary" id="analyzeBtn">
+                <i class="fas fa-brain" style="margin-right: 0.5rem;"></i>
+                Get Health Suggestions
+            </button>
+        </div>
+
+        <div class="last-update" id="lastUpdate">
+            Last updated: --
+        </div>
+    </section>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBdSoee19xeRhejBcvGJRiAIiMEEkS2wKA",
+            authDomain: "lifelink-e7e3a.firebaseapp.com",
+            projectId: "lifelink-e7e3a",
+            storageBucket: "lifelink-e7e3a.firebasestorage.app",
+            messagingSenderId: "56154827817",
+            appId: "1:56154827817:web:d834413e1dc99f6d124038",
+            measurementId: "G-F9S6YWYWCG"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Store current health data
+        let currentHealthData = {};
+        
+        // Text-to-Speech variables
+        let currentSpeech = null;
+        let isSpeaking = false;
+
+        // Reference to the sensorData in Firebase
+        const sensorDataRef = ref(database, 'sensorData');
+
+        // Function to call Gemini API for health analysis
+        async function getHealthAnalysis(healthData) {
+            const GEMINI_API_KEY = 'AIzaSyDlqjHFgaXKrVrfseD5vlbIjCMUl9FVrlw'; // Replace with your actual API key
+            
+            const prompt = `As a medical AI assistant, analyze this health data and provide 3-4 concise, actionable suggestions:
+                       
+            Current Health Metrics:
+            - Heart Rate: ${healthData.heartRate} BPM
+            - Oxygen Level (SpO2): ${healthData.spo2}%
+            - SpO2 Valid: ${healthData.spo2Valid}
+            ${healthData.gps?.latitude && healthData.gps?.longitude ? `- Location: Latitude ${healthData.gps.latitude}, Longitude ${healthData.gps.longitude}` : ''}
+            
+            Please provide short, practical health suggestions based on these readings. Focus on:
+            1. Immediate actions if any metrics are concerning
+            2. Lifestyle adjustments to maintain optimal levels
+            3. When to seek medical attention if needed
+            4. General wellness tips
+            
+            Keep each suggestion brief and actionable. Format as bullet points.`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    return data.candidates[0].content.parts[0].text;
+                } else {
+                    throw new Error('No response from Gemini API');
+                }
+            } catch (error) {
+                console.error('Error calling Gemini API:', error);
+                return "I'm currently unable to analyze your health data. Please try again later or consult with your healthcare provider.";
+            }
+        }
+
+        // Function to speak text
+        function speakText(text, button) {
+            // Stop any ongoing speech
+            if (currentSpeech) {
+                window.speechSynthesis.cancel();
+                currentSpeech = null;
+            }
+
+            // Remove speaking class from all buttons
+            document.querySelectorAll('.speak-btn, .speak-all-btn').forEach(btn => {
+                btn.classList.remove('speaking');
+            });
+
+            // If same button clicked while speaking, just stop
+            if (isSpeaking && button.classList.contains('speaking')) {
+                isSpeaking = false;
+                return;
+            }
+
+            // Create new speech
+            currentSpeech = new SpeechSynthesisUtterance(text);
+            currentSpeech.rate = 0.9; // Slightly slower for better clarity
+            currentSpeech.pitch = 1;
+            currentSpeech.volume = 1;
+
+            // Add speaking class to button
+            button.classList.add('speaking');
+            isSpeaking = true;
+
+            // Event listeners
+            currentSpeech.onend = () => {
+                button.classList.remove('speaking');
+                isSpeaking = false;
+                currentSpeech = null;
+            };
+
+            currentSpeech.onerror = () => {
+                button.classList.remove('speaking');
+                isSpeaking = false;
+                currentSpeech = null;
+            };
+
+            // Speak
+            window.speechSynthesis.speak(currentSpeech);
+        }
+
+        // Function to stop speech
+        function stopSpeech() {
+            if (currentSpeech) {
+                window.speechSynthesis.cancel();
+                currentSpeech = null;
+                isSpeaking = false;
+                document.querySelectorAll('.speak-btn, .speak-all-btn').forEach(btn => {
+                    btn.classList.remove('speaking');
+                });
+            }
+        }
+
+        // Make speakText available globally for onclick handlers
+        window.speakText = speakText;
+
+        // Function to display suggestions
+        function displaySuggestions(suggestionsText) {
+            const suggestionsContainer = document.getElementById('aiSuggestions');
+            
+            // Parse the text and format it nicely
+            const suggestions = suggestionsText.split('\n').filter(line => 
+                line.trim() && (line.includes('•') || line.includes('-') || line.match(/^\d+\./) || line.trim().length > 20)
+            );
+            
+            // Stop any ongoing speech when displaying new suggestions
+            stopSpeech();
+            
+            suggestionsContainer.innerHTML = '';
+            
+            // Add "Read All" button
+            const readAllBtn = document.createElement('button');
+            readAllBtn.className = 'speak-all-btn';
+            readAllBtn.innerHTML = '<i class="fas fa-volume-up"></i> Read All Suggestions';
+            readAllBtn.onclick = function() {
+                const allText = suggestions.map(s => s.replace(/^[•\-\d\.\s]+/, '').trim()).join('. ');
+                speakText(allText, this);
+            };
+            suggestionsContainer.appendChild(readAllBtn);
+            
+            if (suggestions.length === 0) {
+                const item = document.createElement('div');
+                item.className = 'suggestion-item';
+                item.innerHTML = `
+                    <div class="suggestion-text">${suggestionsText}</div>
+                    <button class="speak-btn" onclick="speakText('${suggestionsText.replace(/'/g, "\\'")}', this)">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                `;
+                suggestionsContainer.appendChild(item);
+                return;
+            }
+            
+            suggestions.forEach(suggestion => {
+                const cleanSuggestion = suggestion.replace(/^[•\-\d\.\s]+/, '').trim();
+                if (cleanSuggestion) {
+                    const suggestionElement = document.createElement('div');
+                    suggestionElement.className = 'suggestion-item';
+                    
+                    const textDiv = document.createElement('div');
+                    textDiv.className = 'suggestion-text';
+                    textDiv.textContent = cleanSuggestion;
+                    
+                    const speakBtn = document.createElement('button');
+                    speakBtn.className = 'speak-btn';
+                    speakBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    speakBtn.onclick = function() {
+                        speakText(cleanSuggestion, this);
+                    };
+                    
+                    suggestionElement.appendChild(textDiv);
+                    suggestionElement.appendChild(speakBtn);
+                    suggestionsContainer.appendChild(suggestionElement);
+                }
+            });
+        }
+
+        // Event listener for analyze button
+        document.getElementById('analyzeBtn').addEventListener('click', async () => {
+            if (!currentHealthData.heartRate) {
+                alert('Please wait for health data to load first.');
+                return;
+            }
+
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const originalText = analyzeBtn.innerHTML;
+            
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i>Analyzing...';
+            analyzeBtn.disabled = true;
+
+            const suggestionsContainer = document.getElementById('aiSuggestions');
+            suggestionsContainer.innerHTML = '<div class="loading">Analyzing your health data with AI...</div>';
+
+            try {
+                const analysis = await getHealthAnalysis(currentHealthData);
+                displaySuggestions(analysis);
+            } catch (error) {
+                suggestionsContainer.innerHTML = '<div class="suggestion-item">Error generating suggestions. Please try again.</div>';
+            }
+
+            analyzeBtn.innerHTML = originalText;
+            analyzeBtn.disabled = false;
+        });
+
+        // Auto-analyze when data changes significantly
+        let lastAutoAnalysis = 0;
+        function autoAnalyzeIfNeeded(newData) {
+            const now = Date.now();
+            // Auto-analyze every 5 minutes or if metrics change significantly
+            if (now - lastAutoAnalysis > 300000 || 
+                Math.abs((newData.heartRate || 0) - (currentHealthData.heartRate || 0)) > 10 ||
+                Math.abs((newData.spo2 || 0) - (currentHealthData.spo2 || 0)) > 2) {
+                
+                lastAutoAnalysis = now;
+                getHealthAnalysis(newData).then(displaySuggestions);
+            }
+        }
+
+        // Listen for real-time updates
+        onValue(sensorDataRef, (snapshot) => {
+            const data = snapshot.val();
+            
+            if (data) {
+                // Get the latest sensor reading (last entry in the object)
+                const sensorKeys = Object.keys(data);
+                const latestKey = sensorKeys[sensorKeys.length - 1];
+                const latestData = data[latestKey];
+
+                // Store current data for analysis
+                currentHealthData = { ...latestData };
+
+                // Update Heart Rate
+                const heartRate = latestData.heartRate || 0;
+                document.getElementById('heartRateValue').textContent = `${heartRate} BPM`;
+                
+                // Update Heart Rate Status and Progress
+                let heartRateStatus = 'Normal';
+                let heartRateProgress = (heartRate / 200) * 100;
+                
+                if (heartRate < 60) {
+                    heartRateStatus = 'Low';
+                    document.getElementById('heartRateStatus').className = 'card-status status-warning';
+                } else if (heartRate > 100) {
+                    heartRateStatus = 'High';
+                    document.getElementById('heartRateStatus').className = 'card-status status-critical';
+                } else {
+                    heartRateStatus = 'Normal';
+                    document.getElementById('heartRateStatus').className = 'card-status status-normal';
+                }
+                
+                document.getElementById('heartRateStatus').textContent = heartRateStatus;
+                document.getElementById('heartRateProgress').style.width = `${Math.min(heartRateProgress, 100)}%`;
+
+                // Update SpO2
+                const spo2 = latestData.spo2 || 0;
+                const spo2Valid = latestData.spo2Valid || false;
+                document.getElementById('spo2Value').textContent = `${spo2}%`;
+                
+                // Update SpO2 Status and Progress
+                let spo2Status = 'Good';
+                let spo2Progress = spo2;
+                
+                if (spo2 < 90) {
+                    spo2Status = 'Critical';
+                    document.getElementById('spo2Status').className = 'card-status status-critical';
+                } else if (spo2 < 90) {
+                    spo2Status = 'Low';
+                    document.getElementById('spo2Status').className = 'card-status status-warning';
+                } else {
+                    spo2Status = 'Normal';
+                    document.getElementById('spo2Status').className = 'card-status status-normal';
+                }
+                
+                if (!spo2Valid) {
+                    spo2Status = 'Invalid Reading';
+                    document.getElementById('spo2Status').className = 'card-status status-warning';
+                }
+                
+                document.getElementById('spo2Status').textContent = spo2Status;
+                document.getElementById('spo2Progress').style.width = `${spo2Progress}%`;
+
+                // Update GPS Data
+                const gpsData = latestData.gps || {};
+                document.getElementById('gpsLatitude').textContent = gpsData.latitude || 'No data';
+                document.getElementById('gpsLongitude').textContent = gpsData.longitude || 'No data';
+                document.getElementById('gpsSatellites').textContent = gpsData.satellites || '0';
+                
+                // Update GPS Status
+                const gpsStatus = (gpsData.latitude && gpsData.longitude && gpsData.latitude !== 0 && gpsData.longitude !== 0) 
+                    ? 'Location Active' 
+                    : 'Waiting for GPS';
+                document.getElementById('gpsStatus').textContent = gpsStatus;
+                document.getElementById('gpsStatus').className = gpsStatus === 'Location Active' 
+                    ? 'card-status status-normal' 
+                    : 'card-status status-warning';
+
+                // Update last update time
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+
+                // Auto-analyze if needed
+                autoAnalyzeIfNeeded(latestData);
+
+                console.log('Updated data from Firebase:', latestData);
+            }
+        }, (error) => {
+            console.error('Error reading from Firebase:', error);
+            document.getElementById('heartRateStatus').textContent = 'Connection Error';
+            document.getElementById('spo2Status').textContent = 'Connection Error';
+            document.getElementById('gpsStatus').textContent = 'Connection Error';
+        });
+    </script>
+</body>
+</html>
