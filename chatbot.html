@@ -389,8 +389,8 @@
         
         <div class="chat-container" id="chatContainer">
             <div class="message bot-message">
-                <p>Hello! I'm MediBot, your AI medical assistant. I can help analyze symptoms or images of medical conditions.</p>
-                <p><strong>Note:</strong> This is an AI assistant and not a substitute for professional medical advice.</p>
+                <p>Hello! I'm MediBot, and I'm here to help you feel more at ease about your health concerns. 💙</p>
+                <p>Whether you want to talk about symptoms or share an image, I'm here to listen and offer some guidance. Remember, take a deep breath - we'll figure this out together.</p>
             </div>
         </div>
         
@@ -519,6 +519,20 @@
             generateResponse(symptoms, imageAnalysis = null) {
                 const lowerSymptoms = symptoms.toLowerCase();
                 let matchedCondition = null;
+                let isGreeting = false;
+                
+                // Check for greetings and casual messages
+                const greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening'];
+                const casualPhrases = ['how are you', 'what can you do', 'help', 'who are you'];
+                
+                if (greetings.some(greeting => lowerSymptoms.includes(greeting))) {
+                    isGreeting = true;
+                    return "Hello there! I'm here to help you with any health concerns you might have. Take a deep breath and relax - you can tell me about any symptoms you're experiencing, or upload an image if you have a visible condition you'd like me to look at. What's on your mind today?";
+                }
+                
+                if (casualPhrases.some(phrase => lowerSymptoms.includes(phrase))) {
+                    return "I'm MediBot, your friendly medical assistant. I'm here to provide some guidance and support for your health questions. You can describe any symptoms you're feeling, ask about general health topics, or share images of visible concerns. Remember, while I'm here to help, it's always best to consult with a healthcare professional for proper diagnosis. How can I assist you today?";
+                }
                 
                 // Find matching condition
                 for (const [condition, data] of Object.entries(medicalKnowledge)) {
@@ -529,44 +543,40 @@
                 }
                 
                 if (!matchedCondition) {
-                    matchedCondition = medicalKnowledge.headache; // Default fallback
+                    return "I understand you're reaching out about a health concern. While I don't have specific information about what you described, I'd be happy to help if you could share a bit more detail. For example, you could tell me about:\n\n• Any specific symptoms you're experiencing (like pain, discomfort, or changes you've noticed)\n• When the symptoms started\n• What makes them better or worse\n\nTake your time, and remember - I'm here to help guide you, not to worry you. What would you like to share?";
                 }
                 
-                // Build the response using a template literal for safe interpolation
-                let response = `Based on your description of "${symptoms}", here's my analysis:\n\n`;
+                // Build the response with a calming, conversational tone
+                let response = `I hear you. Let me share some thoughts that might help.\n\n`;
 
                 if (imageAnalysis) {
-                    response += `**Image Analysis:** ${imageAnalysis}\n\n`;
+                    response += `Looking at the image you shared: ${imageAnalysis}\n\n`;
                 }
 
-                response += `**Potential Conditions:**\n`;
-                matchedCondition.conditions.forEach(condition => {
-                    response += `• ${condition}\n`;
-                });
+                response += `This could be related to a few things, including ${matchedCondition.conditions.slice(0, 2).join(' or ')}. Don't worry - many of these are quite manageable.\n\n`;
 
-                response += `\n**Recommendations:**\n`;
-                matchedCondition.recommendations.forEach(rec => {
+                response += `**Here's what might help:**\n`;
+                matchedCondition.recommendations.slice(0, 3).forEach(rec => {
                     response += `• ${rec}\n`;
                 });
 
-                response += `\n**When to Seek Medical Attention:**\n`;
-                matchedCondition.warningSigns.forEach(sign => {
+                response += `\n**Please reach out to a healthcare provider if you notice:**\n`;
+                matchedCondition.warningSigns.slice(0, 2).forEach(sign => {
                     response += `• ${sign}\n`;
                 });
 
-                response += `\n---\n`;
-                response += `*Disclaimer: I am an AI assistant and not a medical professional. This information is for educational purposes only. Please consult with a healthcare provider for proper diagnosis and treatment.*`;
+                response += `\nRemember, you're taking a positive step by looking into this. Is there anything else you'd like to know?`;
 
                 return response;
             }
             
             analyzeImage(imageDescription) {
                 const analyses = [
-                    "The image appears to show a dermatological condition that may require professional evaluation.",
-                    "Based on visual patterns, this could indicate an inflammatory skin condition.",
-                    "The visible symptoms suggest a condition that should be examined by a healthcare provider.",
-                    "This appears to be a common skin issue, but proper diagnosis requires medical expertise.",
-                    "The image shows characteristics that warrant consultation with a dermatologist."
+                    "I can see what you're concerned about. This looks like something that would benefit from a professional's eye, but in the meantime, keep the area clean and watch for any changes.",
+                    "Thank you for sharing this image. While I can see there's something going on, a healthcare provider would be the best person to give you a proper assessment.",
+                    "I've taken a look at your image. It's good that you're being proactive about this. A dermatologist would be able to give you the most accurate guidance.",
+                    "Based on what I can see, this appears to be a common concern. Still, it's worth having a professional take a look to give you peace of mind.",
+                    "I can see why you'd want to get this checked out. The good news is that many conditions like this are very treatable. A doctor will be able to guide you through the next steps."
                 ];
                 
                 return analyses[Math.floor(Math.random() * analyses.length)];
@@ -592,7 +602,7 @@
             
             // Initial bot message
             setTimeout(() => {
-                addBotMessage("To get started, you can:\n\n1. Describe your symptoms in detail\n2. Upload an image of a skin condition, injury, or other visible issue\n3. Ask questions about medications or treatments\n\nHow can I assist you today?");
+                addBotMessage("Feel free to share what's on your mind. You can:\n\n• Tell me about any symptoms you're experiencing\n• Upload a photo of something you're concerned about\n• Ask questions about general health topics\n\nThere's no rush - take your time and share whatever feels comfortable. How are you feeling today?");
             }, 1000);
             
             // Send message on button click
@@ -725,7 +735,7 @@
                 setTimeout(() => {
                     chatContainer.removeChild(typingIndicator);
                     const imageAnalysis = medicalAI.analyzeImage();
-                    const response = `**Image Analysis Complete**\n\n${imageAnalysis}\n\n**Recommendations:**\n• Keep the area clean and dry\n• Avoid scratching or irritating the area\n• Monitor for changes in size, color, or texture\n• Consult a dermatologist for accurate diagnosis\n• Take photos to track changes over time\n\n---\n*Note: This analysis is based on visual patterns and should be confirmed by a healthcare professional.*`;
+                    const response = `${imageAnalysis}\n\n**Here's what I'd suggest:**\n• Keep the area clean and dry\n• Avoid touching or scratching it\n• Monitor it over the next few days for any changes\n• Take photos to track how it looks over time\n• Consider scheduling an appointment with a dermatologist for proper evaluation\n\nYou're doing the right thing by staying aware and proactive. Would you like to tell me more about when you first noticed this, or if there are any other symptoms?`;
                     addBotMessage(response);
                 }, 3000);
             }
