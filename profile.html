@@ -381,7 +381,6 @@
             <a href="homepage.html">Home</a>
             <a href="healthdata.html">Health Data</a>
             <a href="dashboard.html">Dashboard</a>
-           
         </div>
     </nav>
 
@@ -460,7 +459,7 @@
                         </div>
                         <div class="health-value" id="stepsCount">--</div>
                         <div class="health-label">Daily Steps</div>
-                        <div class="health-status status-normal">Steps</div>
+                        <div class="health-status status-normal" id="stepsStatus">Steps</div>
                         <div class="health-meta">Target: 10,000</div>
                     </div>
 
@@ -514,7 +513,267 @@
         const oxygenUpdated = document.getElementById('oxygenUpdated');
         const lastUpdateTime = document.getElementById('lastUpdateTime');
         const stepsCount = document.getElementById('stepsCount');
+        const stepsStatus = document.getElementById('stepsStatus');
         const sleepHours = document.getElementById('sleepHours');
+
+        // Step Counter Algorithm with IMU and Heart Rate Integration
+        class StepCounter {
+            constructor() {
+                // Configuration parameters based on research
+                this.STEP_THRESHOLD = 1.2;           // Minimum acceleration magnitude (g) - typical walking
+                this.MIN_STEP_INTERVAL = 300;        // Min time between steps (ms) - max 3.33 steps/sec
+                this.MAX_STEP_INTERVAL = 2000;       // Max time between steps (ms) - min 0.5 steps/sec
+                this.WINDOW_SIZE = 5;                // Moving average window size
+                this.PEAK_THRESHOLD = 0.3;           // Minimum peak prominence (g)
+                this.LOW_PASS_ALPHA = 0.8;           // Low-pass filter coefficient
+                
+                // State variables
+                this.stepCount = 0;
+                this.lastStepTime = 0;
+                this.accelBuffer = [];
+                this.peakBuffer = [];
+                this.lastPeakValue = 0;
+                this.dailyStartTime = this.getTodayStart();
+                
+                // Heart rate correlation
+                this.baselineHR = 70;
+                this.currentHR = 70;
+                this.lastAccelMagnitude = 1.0;
+                
+                // Calibration
+                this.gravityOffset = 1.0;  // Standard gravity (1g)
+                
+                this.loadDailySteps();
+            }
+            
+            getTodayStart() {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                return now.getTime();
+            }
+            
+            // Calculate acceleration magnitude from IMU data (resultant vector)
+            calculateMagnitude(accelX, accelY, accelZ) {
+                // Convert to m/s² if needed and calculate magnitude
+                const magnitude = Math.sqrt(
+                    accelX * accelX + 
+                    accelY * accelY + 
+                    accelZ * accelZ
+                );
+                return magnitude;
+            }
+            
+            // Remove gravity component and apply low-pass filter
+            filterAcceleration(rawMagnitude) {
+                // Low-pass filter to smooth the signal
+                const filtered = this.LOW_PASS_ALPHA * rawMagnitude + 
+                                (1 - this.LOW_PASS_ALPHA) * this.lastAccelMagnitude;
+                this.lastAccelMagnitude = filtered;
+                
+                // Remove gravity component
+                return Math.abs(filtered - this.gravityOffset);
+            }
+            
+            // Apply moving average filter for additional noise reduction
+            smoothData(value) {
+                this.accelBuffer.push(value);
+                if (this.accelBuffer.length > this.WINDOW_SIZE) {
+                    this.accelBuffer.shift();
+                }
+                
+                const sum = this.accelBuffer.reduce((a, b) => a + b, 0);
+                return sum / this.accelBuffer.length;
+            }
+            
+            // Detect if current value is a significant peak
+            isPeak(currentValue, previousValue, nextValue) {
+                // Check if it's a local maximum
+                const isLocalMax = currentValue > previousValue && currentValue > nextValue;
+                
+                // Check if it exceeds threshold
+                const exceedsThreshold = currentValue > this.STEP_THRESHOLD;
+                
+                // Check peak prominence (difference from valleys)
+                const minValley = Math.min(previousValue, nextValue);
+                const prominence = currentValue - minValley;
+                const hasProminence = prominence > this.PEAK_THRESHOLD;
+                
+                return isLocalMax && exceedsThreshold && hasProminence;
+            }
+            
+            // Validate step based on timing and heart rate correlation
+            isValidStep(currentTime) {
+                const timeSinceLastStep = currentTime - this.lastStepTime;
+                
+                // First step is always valid
+                if (this.lastStepTime === 0) {
+                    return true;
+                }
+                
+                // Check minimum interval to avoid double counting
+                if (timeSinceLastStep < this.MIN_STEP_INTERVAL) {
+                    return false;
+                }
+                
+                // Check maximum interval to ensure continuous walking
+                if (timeSinceLastStep > this.MAX_STEP_INTERVAL) {
+                    return true; // Allow after long pause
+                }
+                
+                // Adjust thresholds based on heart rate
+                // Higher HR suggests faster movement (running/jogging)
+                // Expected cadence increases with heart rate
+                const hrFactor = this.currentHR / this.baselineHR;
+                const adjustedMinInterval = this.MIN_STEP_INTERVAL / Math.max(hrFactor, 0.8);
+                const adjustedMaxInterval = this.MAX_STEP_INTERVAL / Math.min(hrFactor, 1.5);
+                
+                return timeSinceLastStep >= adjustedMinInterval && 
+                       timeSinceLastStep <= adjustedMaxInterval;
+            }
+            
+            // Calculate expected cadence from heart rate (steps per minute)
+            getExpectedCadence() {
+                // Research shows correlation between HR and cadence
+                // Resting: ~60-80 BPM, ~0 steps/min
+                // Walking: ~90-110 BPM, ~90-120 steps/min
+                // Jogging: ~120-150 BPM, ~150-180 steps/min
+                // Running: ~150+ BPM, ~180+ steps/min
+                
+                if (this.currentHR < 80) {
+                    return 0; // Resting
+                } else if (this.currentHR < 110) {
+                    return 90 + (this.currentHR - 80) * 1.0; // Walking
+                } else if (this.currentHR < 150) {
+                    return 120 + (this.currentHR - 110) * 1.5; // Jogging
+                } else {
+                    return 180 + (this.currentHR - 150) * 0.5; // Running
+                }
+            }
+            
+            // Main processing function - processes IMU data and detects steps
+            processIMUData(accelX, accelY, accelZ, timestamp, heartRate) {
+                // Update heart rate for cadence adjustment
+                if (heartRate && heartRate > 40 && heartRate < 220) {
+                    this.currentHR = heartRate;
+                }
+                
+                // Calculate raw acceleration magnitude
+                const rawMagnitude = this.calculateMagnitude(accelX, accelY, accelZ);
+                
+                // Filter and remove gravity
+                const filteredMagnitude = this.filterAcceleration(rawMagnitude);
+                
+                // Apply smoothing
+                const smoothedMagnitude = this.smoothData(filteredMagnitude);
+                
+                // Store for peak detection (need 3 consecutive points)
+                this.peakBuffer.push(smoothedMagnitude);
+                if (this.peakBuffer.length > 3) {
+                    this.peakBuffer.shift();
+                }
+                
+                // Need at least 3 points for peak detection
+                if (this.peakBuffer.length === 3) {
+                    const isPeakDetected = this.isPeak(
+                        this.peakBuffer[1],  // Current (middle point)
+                        this.peakBuffer[0],  // Previous
+                        this.peakBuffer[2]   // Next
+                    );
+                    
+                    // If peak detected, validate with timing and HR
+                    if (isPeakDetected && this.isValidStep(timestamp)) {
+                        this.stepCount++;
+                        this.lastStepTime = timestamp;
+                        this.lastPeakValue = this.peakBuffer[1];
+                        this.saveDailySteps();
+                        
+                        console.log(`✓ Step detected! Count: ${this.stepCount}, HR: ${this.currentHR}, Accel: ${smoothedMagnitude.toFixed(2)}g`);
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            // Reset counter at midnight
+            checkDailyReset() {
+                const currentDayStart = this.getTodayStart();
+                if (currentDayStart > this.dailyStartTime) {
+                    console.log('Daily reset triggered - new day started');
+                    this.stepCount = 0;
+                    this.dailyStartTime = currentDayStart;
+                    this.lastStepTime = 0;
+                    this.saveDailySteps();
+                }
+            }
+            
+            // Save step count to Firebase
+            saveDailySteps() {
+                const currentUser = auth.currentUser;
+                if (currentUser) {
+                    const stepData = {
+                        steps: this.stepCount,
+                        date: new Date().toISOString().split('T')[0],
+                        timestamp: Date.now(),
+                        heartRate: this.currentHR
+                    };
+                    
+                    rtdb.ref(`users/${currentUser.uid}/steps/daily`).set(stepData)
+                        .catch(error => console.error('Error saving steps:', error));
+                }
+            }
+            
+            // Load saved step count for today
+            async loadDailySteps() {
+                const currentUser = auth.currentUser;
+                if (currentUser) {
+                    try {
+                        const snapshot = await rtdb.ref(`users/${currentUser.uid}/steps/daily`).once('value');
+                        const data = snapshot.val();
+                        
+                        const today = new Date().toISOString().split('T')[0];
+                        if (data && data.date === today) {
+                            this.stepCount = data.steps || 0;
+                            console.log(`Loaded ${this.stepCount} steps from storage`);
+                        } else {
+                            this.stepCount = 0;
+                            console.log('Starting fresh step count for today');
+                        }
+                    } catch (error) {
+                        console.error('Error loading steps:', error);
+                        this.stepCount = 0;
+                    }
+                }
+            }
+            
+            getStepCount() {
+                return this.stepCount;
+            }
+            
+            // Get activity level classification based on daily steps
+            getActivityLevel() {
+                if (this.stepCount < 3000) return 'Sedentary';
+                if (this.stepCount < 5000) return 'Low Active';
+                if (this.stepCount < 7500) return 'Moderate';
+                if (this.stepCount < 10000) return 'Active';
+                return 'Very Active';
+            }
+            
+            // Get calories burned estimation (rough estimate)
+            getCaloriesBurned() {
+                // Average: 0.04 calories per step (varies by weight and intensity)
+                return Math.round(this.stepCount * 0.04);
+            }
+            
+            // Get distance traveled in km (rough estimate)
+            getDistance() {
+                // Average step length: 0.75 meters
+                return (this.stepCount * 0.75 / 1000).toFixed(2);
+            }
+        }
+
+        // Initialize step counter
+        const stepCounter = new StepCounter();
 
         // Show message function
         function showMessage(message, type) {
@@ -550,7 +809,7 @@
 
         // Update health status indicators
         function updateHealthStatus(heartValue, oxygenValue) {
-            // Heart rate status - matching the dashboard logic
+            // Heart rate status
             if (heartValue < 60) {
                 heartStatus.textContent = 'Low';
                 heartStatus.className = 'health-status status-warning';
@@ -562,7 +821,7 @@
                 heartStatus.className = 'health-status status-normal';
             }
 
-            // Oxygen level status - matching the dashboard logic
+            // Oxygen level status
             if (oxygenValue < 90) {
                 oxygenStatus.textContent = 'Low';
                 oxygenStatus.className = 'health-status status-critical';
@@ -575,7 +834,21 @@
             }
         }
 
-        // Get latest sensor data from sensorData path (same as dashboard)
+        // Update step status based on activity level
+        function updateStepStatus(steps) {
+            const activityLevel = stepCounter.getActivityLevel();
+            stepsStatus.textContent = activityLevel;
+            
+            if (steps < 5000) {
+                stepsStatus.className = 'health-status status-warning';
+            } else if (steps < 10000) {
+                stepsStatus.className = 'health-status status-normal';
+            } else {
+                stepsStatus.className = 'health-status status-normal';
+            }
+        }
+
+        // Get latest sensor data from Firebase
         async function getLatestSensorData() {
             try {
                 console.log('Fetching latest sensor data from sensorData path...');
@@ -585,7 +858,6 @@
                 const data = snapshot.val();
                 
                 if (data) {
-                    // Get the latest sensor reading (last entry in the object)
                     const sensorKeys = Object.keys(data);
                     const latestKey = sensorKeys[sensorKeys.length - 1];
                     const latestData = data[latestKey];
@@ -595,8 +867,12 @@
                     return {
                         heartRate: latestData.heartRate || 0,
                         spo2: latestData.spo2 || 0,
-                        spo2Valid: latestData.spo2Valid || false,
-                        gps: latestData.gps || {},
+                        accelX: latestData.accelX || 0,
+                        accelY: latestData.accelY || 0,
+                        accelZ: latestData.accelZ || 1.0,
+                        gyroX: latestData.gyroX || 0,
+                        gyroY: latestData.gyroY || 0,
+                        gyroZ: latestData.gyroZ || 0,
                         timestamp: Date.now()
                     };
                 } else {
@@ -639,7 +915,7 @@
                     userId.textContent = user.uid.substring(0, 8) + '...';
                 }
                 
-                // Get health data from sensorData path (same as dashboard)
+                // Get health data from sensorData path
                 showMessage('Fetching real-time sensor data...', 'info');
                 const sensorData = await getLatestSensorData();
                 
@@ -656,8 +932,33 @@
                     
                     updateHealthStatus(sensorData.heartRate, sensorData.spo2);
                     
-                    // Generate demo data for other metrics
-                    stepsCount.textContent = Math.floor(Math.random() * 3000) + 7000;
+                    // Process IMU data for step counting
+                    if (sensorData.accelX !== undefined && 
+                        sensorData.accelY !== undefined && 
+                        sensorData.accelZ !== undefined) {
+                        
+                        console.log('Processing IMU data:', {
+                            accelX: sensorData.accelX,
+                            accelY: sensorData.accelY,
+                            accelZ: sensorData.accelZ,
+                            heartRate: sensorData.heartRate
+                        });
+                        
+                        stepCounter.processIMUData(
+                            sensorData.accelX,
+                            sensorData.accelY,
+                            sensorData.accelZ,
+                            sensorData.timestamp,
+                            sensorData.heartRate
+                        );
+                    }
+                    
+                    // Update step count display
+                    const steps = stepCounter.getStepCount();
+                    stepsCount.textContent = steps.toLocaleString();
+                    updateStepStatus(steps);
+                    
+                    // Generate demo sleep data
                     sleepHours.textContent = (Math.random() * 3 + 5).toFixed(1);
                     
                     showMessage('Sensor data loaded successfully!', 'success');
@@ -673,7 +974,10 @@
                     oxygenUpdated.textContent = 'Demo data';
                     lastUpdateTime.textContent = 'Last update: Demo data';
                     
-                    stepsCount.textContent = '8,542';
+                    const steps = stepCounter.getStepCount();
+                    stepsCount.textContent = steps.toLocaleString();
+                    updateStepStatus(steps);
+                    
                     sleepHours.textContent = '7.2';
                     
                     updateHealthStatus(fallbackHeartRate, fallbackOxygenLevel);
@@ -697,7 +1001,7 @@
                 const data = snapshot.val();
                 
                 if (data) {
-                    // Get the latest sensor reading (last entry in the object)
+                    // Get the latest sensor reading
                     const sensorKeys = Object.keys(data);
                     const latestKey = sensorKeys[sensorKeys.length - 1];
                     const latestData = data[latestKey];
@@ -715,13 +1019,48 @@
                         // Update status indicators
                         updateHealthStatus(latestData.heartRate, latestData.spo2);
                         
-                        console.log('Health data updated:', latestData);
+                        // Process IMU data for step counting if available
+                        if (latestData.accelX !== undefined && 
+                            latestData.accelY !== undefined && 
+                            latestData.accelZ !== undefined) {
+                            
+                            const stepDetected = stepCounter.processIMUData(
+                                latestData.accelX,
+                                latestData.accelY,
+                                latestData.accelZ,
+                                Date.now(),
+                                latestData.heartRate
+                            );
+                            
+                            if (stepDetected) {
+                                console.log('🚶 Step detected! Total steps:', stepCounter.getStepCount());
+                            }
+                            
+                            // Update step count display
+                            const steps = stepCounter.getStepCount();
+                            stepsCount.textContent = steps.toLocaleString();
+                            updateStepStatus(steps);
+                        }
+                        
+                        console.log('Health data updated:', {
+                            heartRate: latestData.heartRate,
+                            spo2: latestData.spo2,
+                            steps: stepCounter.getStepCount()
+                        });
                     }
                 }
             }, (error) => {
                 console.error('Error in real-time listener:', error);
                 showMessage('Error updating health data', 'error');
             });
+            
+            // Check for daily reset every minute
+            setInterval(() => {
+                stepCounter.checkDailyReset();
+                const steps = stepCounter.getStepCount();
+                stepsCount.textContent = steps.toLocaleString();
+                updateStepStatus(steps);
+            }, 60000);
         }
 
         // Logout function
