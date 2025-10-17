@@ -121,6 +121,8 @@
         }
 
         @keyframes fadeIn { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+        /* hidden canvas */
+        #analysisCanvas { display:none; }
     </style>
 </head>
 <body>
@@ -132,9 +134,12 @@
                 <li><a href="#" class="nav-link">Home</a></li>
                 <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
                 <li><a href="reportt.html" class="nav-link">Health Data</a></li>
-                <li><a href="login.html" class="nav-link">Login/Sign-up</a></li>
+                <!-- loginNav will be shown only when NOT signed in -->
+                <li id="loginNav"><a href="login.html" class="nav-link">Login/Sign-up</a></li>
                 <li><a href="profile.html" class="nav-link">Profile</a></li>
-                <li><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
+                <li><a href="reminder.html" class="nav-link">Reminders</a></li>
+                <!-- logoutNav will be shown only when signed in -->
+                <li id="logoutNav" style="display:none;"><a href="#" class="nav-link" onclick="logout()">Logout</a></li>
             </ul>
         </nav>
     </header>
@@ -169,8 +174,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 
     <script>
-      // Your web app's Firebase configuration
-      // Replace with your actual Firebase configuration if needed
+      // Your web app's Firebase configuration (unchanged)
       const firebaseConfig = {
         apiKey: "AIzaSyBdSoee19xeRhejBcvGJRiAIiMEEkS2wKA",
         authDomain: "lifelink-e7e3a.firebaseapp.com",
@@ -180,10 +184,21 @@
         appId: "1:56154827817:web:d834413e1dc99f6d124038",
         measurementId: "G-F9S6YWYWCG"
       };
-
-      // Initialize Firebase
       firebase.initializeApp(firebaseConfig);
 
+      const loginNav = () => document.getElementById('loginNav');
+      const logoutNav = () => document.getElementById('logoutNav');
+      firebase.auth().onAuthStateChanged((user) => {
+        const loginEl = loginNav();
+        const logoutEl = logoutNav();
+        if (user) {
+          if (loginEl) loginEl.style.display = 'none';
+          if (logoutEl) logoutEl.style.display = 'inline-block';
+        } else {
+          if (loginEl) loginEl.style.display = 'inline-block';
+          if (logoutEl) logoutEl.style.display = 'none';
+        }
+      });
       function logout() {
         firebase.auth().signOut().then(() => {
           console.log('User signed out');
@@ -249,8 +264,11 @@
         </div>
     </div>
 
+    <!-- Hidden canvas used for lightweight client-side analysis -->
+    <canvas id="analysisCanvas" width="512" height="512" aria-hidden="true"></canvas>
+
     <script>
-        // Medical knowledge (from chatbot.html) scoped for the widget
+        // Medical knowledge (from chatbot.html) scoped for the widget (unchanged)
         const medicalKnowledgeWidget = {
             'headache': {
                 conditions: ['Tension headache', 'Migraine', 'Sinus headache', 'Cluster headache'],
@@ -334,7 +352,7 @@
             }
         };
 
-        // Medical AI (adapted from chatbot.html)
+        // Medical AI (adapted) - analyzeImage accepts structured analysis object
         class MedicalAIWidget {
             generateResponse(symptoms, imageAnalysis = null) {
                 if (!symptoms || !symptoms.trim()) {
@@ -342,7 +360,6 @@
                 }
 
                 const lowerSymptoms = symptoms.toLowerCase();
-                // greetings and casual handling
                 const greetings = ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening'];
                 const casualPhrases = ['how are you', 'what can you do', 'help', 'who are you'];
 
@@ -363,14 +380,18 @@
                 }
 
                 if (!matchedCondition) {
-                    // fallback: generic helpful guidance
                     return "I understand you're reaching out about a health concern. I don't have a direct match for that description, but here are some general steps:\n\n• Describe how long you've had symptoms and whether they're getting better or worse.\n• Note any new medications, exposures, or injuries.\n• For sudden severe symptoms (difficulty breathing, high fever, severe pain), seek urgent medical care.\n\nIf you can provide more detail, I can try to suggest possible causes and next steps.";
                 }
 
                 let response = `I hear you. Here are some thoughts that might help based on what you described:\n\n`;
 
                 if (imageAnalysis) {
-                    response += `Image Insight: ${imageAnalysis}\n\n`;
+                    // imageAnalysis expected to be an object with keys: severity, redPercent, notes
+                    response += `Image analysis:\n• Estimated redness area: ${imageAnalysis.redPercent.toFixed(1)}% of visible area\n• Estimated severity: ${imageAnalysis.severity}\n`;
+                    if (imageAnalysis.notes && imageAnalysis.notes.length) {
+                        response += `• Notes: ${imageAnalysis.notes.join('; ')}\n`;
+                    }
+                    response += `\n`;
                 }
 
                 response += `Possible related conditions: ${matchedCondition.conditions.slice(0,3).join(', ')}.\n\n`;
@@ -385,6 +406,7 @@
                 return response;
             }
 
+            // fallback analyzeImage kept for compatibility but not used when we have client-side metrics
             analyzeImage() {
                 const analyses = [
                     "I can see the area you're concerned about — it may benefit from a professional evaluation. Keep it clean and monitor for changes.",
@@ -395,6 +417,106 @@
                 ];
                 return analyses[Math.floor(Math.random() * analyses.length)];
             }
+        }
+
+        // Client-side image analysis helper
+        // Lightweight heuristic: compute fraction of strongly red pixels and overall average redness.
+        function analyzeImageClientSide(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) return reject(new Error('No file provided'));
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    try {
+                        const canvas = document.getElementById('analysisCanvas');
+                        const ctx = canvas.getContext('2d');
+
+                        // Resize preserving aspect ratio, max dimension 512
+                        const maxDim = 512;
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > h) {
+                            if (w > maxDim) {
+                                h = Math.round(h * (maxDim / w));
+                                w = maxDim;
+                            }
+                        } else {
+                            if (h > maxDim) {
+                                w = Math.round(w * (maxDim / h));
+                                h = maxDim;
+                            }
+                        }
+                        canvas.width = w;
+                        canvas.height = h;
+                        ctx.clearRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+
+                        const imageData = ctx.getImageData(0, 0, w, h);
+                        const data = imageData.data;
+                        let redCount = 0;
+                        let totalPixels = w * h;
+                        let redSum = 0;
+                        let brightCount = 0;
+
+                        // thresholds tuned for typical skin photos but not clinical-grade
+                        const RED_DIFF_THRESHOLD = 30; // red is this much higher than max(g,b)
+                        const MIN_RED_INTENSITY = 80; // red channel value minimum to count
+
+                        for (let i = 0; i < data.length; i += 4) {
+                            const r = data[i];
+                            const g = data[i+1];
+                            const b = data[i+2];
+                            const alpha = data[i+3];
+                            if (alpha < 100) { totalPixels--; continue; } // ignore transparent
+                            const maxGB = Math.max(g,b);
+                            const redDiff = r - maxGB;
+                            if (r >= MIN_RED_INTENSITY && redDiff >= RED_DIFF_THRESHOLD) {
+                                redCount++;
+                                redSum += redDiff;
+                            }
+                            // quick brightness check
+                            const brightness = 0.299*r + 0.587*g + 0.114*b;
+                            if (brightness > 200) brightCount++;
+                        }
+
+                        const redPercent = totalPixels > 0 ? (redCount / totalPixels) * 100 : 0;
+                        const avgRedDiff = redCount > 0 ? (redSum / redCount) : 0;
+                        const brightAreaPercent = totalPixels > 0 ? (brightCount / totalPixels) * 100 : 0;
+
+                        // classify severity in simple tiers
+                        let severity = 'none/minimal';
+                        if (redPercent > 8 || avgRedDiff > 70) severity = 'severe';
+                        else if (redPercent > 3 || avgRedDiff > 40) severity = 'moderate';
+                        else if (redPercent > 0.5 || avgRedDiff > 20) severity = 'mild';
+
+                        const notes = [];
+                        if (brightAreaPercent > 30) notes.push('Image has many bright areas — lighting may affect color interpretation');
+                        if (redPercent < 0.2 && avgRedDiff < 15) notes.push('No significant redness detected');
+                        if (redPercent >= 0.2 && redPercent < 3) notes.push('Small localized red area detected');
+                        if (redPercent >= 3 && redPercent < 8) notes.push('Moderate red/inflamed area detected');
+                        if (redPercent >= 8) notes.push('Large red/inflamed area detected; consider evaluating for infection or widespread inflammation');
+
+                        // cleanup
+                        URL.revokeObjectURL(url);
+
+                        resolve({
+                            redPercent,
+                            avgRedDiff,
+                            brightAreaPercent,
+                            severity,
+                            notes
+                        });
+                    } catch (err) {
+                        URL.revokeObjectURL(url);
+                        reject(err);
+                    }
+                };
+                img.onerror = (e) => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Failed to load image'));
+                };
+                img.src = url;
+            });
         }
 
         // Widget behavior wiring
@@ -446,7 +568,7 @@
                     if (typing.parentElement) typing.parentElement.removeChild(typing);
                     const response = ai.generateResponse(message);
                     addBotMessage(response);
-                }, 1000 + Math.random()*1000);
+                }, 800 + Math.random()*800);
             }
 
             function addUserMessage(message) {
@@ -471,8 +593,20 @@
             cancelUpload.addEventListener('click', () => { uploadModal.style.display = 'none'; clearUploaded(); });
 
             uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#3498db'; });
+            uploadArea.addEventListener('dragleave', (e) => { e.preventDefault(); uploadArea.style.borderColor = ''; });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '';
+                const file = e.dataTransfer.files[0];
+                handleFile(file);
+            });
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
+                handleFile(file);
+            });
+
+            function handleFile(file) {
                 if (file && file.type.startsWith('image/')) {
                     uploadedImage = file;
                     const reader = new FileReader();
@@ -494,13 +628,14 @@
                 } else {
                     alert('Please select a valid image file.');
                 }
-            });
+            }
 
-            analyzeImageBtn.addEventListener('click', () => {
+            analyzeImageBtn.addEventListener('click', async () => {
                 if (!uploadedImage) {
                     alert('Please select an image first.');
                     return;
                 }
+                // UX: close modal and show uploading message
                 uploadModal.style.display = 'none';
                 addUserMessage("Image uploaded for analysis");
 
@@ -510,13 +645,27 @@
                 chatContainer.appendChild(typing);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
 
-                setTimeout(() => {
+                try {
+                    // perform client-side analysis
+                    const metrics = await analyzeImageClientSide(uploadedImage);
+
+                    // build a clear, clinical-seeming response from metrics
                     if (typing.parentElement) typing.parentElement.removeChild(typing);
-                    const imageAnalysis = ai.analyzeImage();
-                    const response = `${imageAnalysis}\n\nHere's what I'd suggest:\n• Keep the area clean and dry\n• Avoid touching or scratching it\n• Monitor it over the next few days for worsening or signs of infection\n\nDisclaimer: This is an automated analysis and not a medical diagnosis. Please consult a healthcare professional for an accurate assessment.`;
+
+                    const imageInsight = `Detected redness covering approximately ${metrics.redPercent.toFixed(1)}% of the visible area. ` +
+                        `Estimated severity: ${metrics.severity}. ${metrics.notes.join('; ')}`;
+
+                    // Use the main generator to include the result with symptom info (if user had typed text earlier)
+                    const response = `${imageInsight}\n\nHere's what I'd suggest:\n• Keep the area clean and dry\n• Avoid touching or scratching it\n• Monitor for spreading, increasing pain, warmth, or pus\n\nDisclaimer: This is an automated image analysis (not a medical diagnosis). For accurate diagnosis, consult a healthcare professional.`;
+
                     addBotMessage(response);
                     clearUploaded();
-                }, 1800 + Math.random()*1000);
+                } catch (err) {
+                    if (typing.parentElement) typing.parentElement.removeChild(typing);
+                    console.error('Image analysis failed', err);
+                    addBotMessage("Sorry, I couldn't analyze the image. Please try a different photo or ensure it's well-lit and focused.");
+                    clearUploaded();
+                }
             });
 
             function clearUploaded() { uploadedImage = null; previewContainer.innerHTML = ''; fileInput.value = ''; }

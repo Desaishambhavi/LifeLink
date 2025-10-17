@@ -848,7 +848,162 @@
             }
         }
 
-        // Get latest sensor data from Firebase
+        // --- Implementation: realtime listener + fusion step detection logic (adapted from Smart Step Dashboard) ---
+        // Fusion tuning parameters (you can tweak these if needed)
+        let ACC_THRESHOLD = 1.20;   // accel magnitude threshold (g)
+        let GYRO_THRESHOLD = 1.0;   // gyro magnitude threshold
+        let BPM_DELTA = 4;          // bpm above baseline to consider active
+        let MIN_GAP = 350;          // ms (min gap between steps)
+        let BPM_BASELINE = 70;      // starting estimation, will adapt
+        const BASELINE_ALPHA = 0.02; // smoothing speed for baseline
+        let lastStepTimeLocal = 0;
+
+        // Utility: compute magnitude safely
+        function computeMagnitude(obj) {
+            const x = Number(obj?.x || 0);
+            const y = Number(obj?.y || 0);
+            const z = Number(obj?.z || 0);
+            return Math.sqrt(x*x + y*y + z*z);
+        }
+
+        // detectStep: returns object with stepCounted and confidence and mags
+        function detectStep(acc, gyro, bpm) {
+            const now = Date.now();
+
+            // prefer precomputed total if available
+            const accMag = (acc && typeof acc.total === 'number') ? acc.total : computeMagnitude(acc || {x:0,y:0,z:0});
+            const gyroMag = computeMagnitude(gyro || {x:0,y:0,z:0});
+
+            // adapt BPM baseline slowly if bpm available
+            if (typeof bpm === 'number' && !isNaN(bpm)) {
+                BPM_BASELINE = BPM_BASELINE * (1 - BASELINE_ALPHA) + bpm * BASELINE_ALPHA;
+            }
+
+            let confidence = 0;
+            if (accMag > ACC_THRESHOLD) confidence += 1.0;
+            if (typeof bpm === 'number' && !isNaN(bpm)) {
+                if (bpm > BPM_BASELINE + BPM_DELTA) confidence += 0.5;
+                else if (bpm > BPM_BASELINE + 3) confidence += 0.25;
+            }
+            if (gyroMag > GYRO_THRESHOLD) confidence += 0.4;
+
+            // small penalty if too soon after last step
+            if (now - lastStepTimeLocal < 200) confidence -= 0.6;
+
+            let stepCounted = false;
+            if (confidence >= 1.0 && (now - lastStepTimeLocal > MIN_GAP)) {
+                stepCounted = true;
+                lastStepTimeLocal = now;
+            }
+
+            return { stepCounted, confidence, accMag, gyroMag, now, baselineBPM: Math.round(BPM_BASELINE) };
+        }
+
+        // Map different node shapes to canonical sensor object
+        function normalizeNode(node) {
+            if (!node) return null;
+            // support: acceleration.total, acceleration.x,y,z, or acc, or accel object
+            const acceleration = node.acceleration || node.acc || node.accel || node.accelerationRaw || null;
+            const gyroscope = node.gyroscope || node.gyro || node.gyroscopeRaw || node.gyroRaw || null;
+            // bpm may be node.heartRate, node.bpm, node.spo2? prefer bpm/heartRate
+            let heart = null;
+            if (typeof node.heartRate === 'number' || typeof node.heartRate === 'string') heart = Number(node.heartRate);
+            else if (typeof node.bpm === 'number' || typeof node.bpm === 'string') heart = Number(node.bpm);
+            else if (node.health && (node.health.bpm || node.health.heartRate)) heart = Number(node.health.bpm || node.health.heartRate);
+            // spo2
+            let spo2 = null;
+            if (typeof node.spo2 === 'number' || typeof node.spo2 === 'string') spo2 = Number(node.spo2);
+            else if (node.health && typeof node.health.spo2 === 'number') spo2 = Number(node.health.spo2);
+
+            // timestamp fallback
+            const timestamp = node.timestamp || node.time || Date.now();
+
+            return { acceleration, gyroscope, heartRate: heart, spo2, timestamp };
+        }
+
+        // handle incoming realtime sensor node and update UI + step logic
+        function handleRealtimeNode(node) {
+            const s = normalizeNode(node);
+            if (!s) return;
+
+            // Update heart/oxygen UI
+            const hr = typeof s.heartRate === 'number' ? s.heartRate : null;
+            const sp = typeof s.spo2 === 'number' ? s.spo2 : null;
+
+            if (hr) heartRate.textContent = hr;
+            if (sp) oxygenLevel.textContent = sp;
+
+            const timeText = formatTimestamp(s.timestamp || Date.now());
+            if (hr) heartUpdated.textContent = `Updated: ${timeText}`;
+            if (sp) oxygenUpdated.textContent = `Updated: ${timeText}`;
+            lastUpdateTime.textContent = `Last update: ${timeText}`;
+
+            // Update health status
+            updateHealthStatus(hr || Number(oxygenLevel.textContent) || 0, sp || Number(oxygenLevel.textContent) || 0);
+
+            // Process IMU data with StepCounter (existing algorithm)
+            if (s.acceleration && (typeof s.acceleration.x === 'number' || typeof s.acceleration.total === 'number')) {
+                // If StepCounter's processIMUData detects a step, it'll increment and save
+                const accelX = Number(s.acceleration.x || 0);
+                const accelY = Number(s.acceleration.y || 0);
+                const accelZ = Number(s.acceleration.z || s.acceleration.total || 1.0);
+                const processed = stepCounter.processIMUData(accelX, accelY, accelZ, s.timestamp || Date.now(), hr);
+                if (processed) {
+                    // UI update happens below (after detect fusion)
+                }
+            }
+
+            // Additionally, apply fusion detectStep logic to improve robustness (from Smart Step Dashboard)
+            const detect = detectStep(s.acceleration, s.gyroscope, hr);
+            if (detect.stepCounted) {
+                // Keep step counter in sync with fusion detection:
+                stepCounter.stepCount = (stepCounter.stepCount || 0) + 1;
+                stepCounter.lastStepTime = detect.now;
+                stepCounter.saveDailySteps();
+            }
+
+            // Update UI counters & derived values
+            const steps = stepCounter.getStepCount();
+            stepsCount.textContent = steps.toLocaleString();
+            updateStepStatus(steps);
+
+            // Demo sleep (keeps previous behavior)
+            sleepHours.textContent = (Math.random() * 3 + 5).toFixed(1);
+        }
+
+        // Setup real-time listener for health data from sensorData path
+        function setupRealtimeListener() {
+            console.log('Setting up real-time sensor data listener...');
+
+            const sensorDataRef = rtdb.ref('sensorData');
+
+            // Listen for changes to the sensorData node; find the latest child key and process it.
+            sensorDataRef.on('value', (snapshot) => {
+                try {
+                    const data = snapshot.val();
+                    if (!data) {
+                        // nothing in DB yet
+                        return;
+                    }
+
+                    // If sensorData is an object with keys, find latest by insertion order (last key)
+                    const keys = Object.keys(data);
+                    if (keys.length === 0) return;
+                    const latestKey = keys[keys.length - 1];
+                    const latestNode = data[latestKey];
+
+                    if (latestNode) {
+                        handleRealtimeNode(latestNode);
+                    }
+                } catch (err) {
+                    console.error('Realtime listener error processing snapshot:', err);
+                }
+            }, (error) => {
+                console.error('Realtime listener error:', error);
+            });
+        }
+
+        // Get latest sensor data (one-time) - used during initial load
         async function getLatestSensorData() {
             try {
                 console.log('Fetching latest sensor data from sensorData path...');
@@ -865,15 +1020,15 @@
                     console.log('Latest sensor data found:', latestData);
                     
                     return {
-                        heartRate: latestData.heartRate || 0,
-                        spo2: latestData.spo2 || 0,
-                        accelX: latestData.accelX || 0,
-                        accelY: latestData.accelY || 0,
-                        accelZ: latestData.accelZ || 1.0,
-                        gyroX: latestData.gyroX || 0,
-                        gyroY: latestData.gyroY || 0,
-                        gyroZ: latestData.gyroZ || 0,
-                        timestamp: Date.now()
+                        heartRate: latestData.heartRate || latestData.bpm || (latestData.health && (latestData.health.bpm || latestData.health.heartRate)) || 0,
+                        spo2: latestData.spo2 || (latestData.health && latestData.health.spo2) || 0,
+                        accelX: (latestData.acceleration && (latestData.acceleration.x || 0)) || (latestData.acc && latestData.acc.x) || 0,
+                        accelY: (latestData.acceleration && (latestData.acceleration.y || 0)) || (latestData.acc && latestData.acc.y) || 0,
+                        accelZ: (latestData.acceleration && (latestData.acceleration.z || latestData.acceleration.total)) || (latestData.acc && (latestData.acc.z || latestData.acc.total)) || 1.0,
+                        gyroX: (latestData.gyroscope && latestData.gyroscope.x) || (latestData.gyro && latestData.gyro.x) || 0,
+                        gyroY: (latestData.gyroscope && latestData.gyroscope.y) || (latestData.gyro && latestData.gyro.y) || 0,
+                        gyroZ: (latestData.gyroscope && latestData.gyroscope.z) || (latestData.gyro && latestData.gyro.z) || 0,
+                        timestamp: latestData.timestamp || Date.now()
                     };
                 } else {
                     console.log('No sensor data found');
@@ -932,12 +1087,12 @@
                     
                     updateHealthStatus(sensorData.heartRate, sensorData.spo2);
                     
-                    // Process IMU data for step counting
+                    // Process IMU data for step counting using existing StepCounter
                     if (sensorData.accelX !== undefined && 
                         sensorData.accelY !== undefined && 
                         sensorData.accelZ !== undefined) {
                         
-                        console.log('Processing IMU data:', {
+                        console.log('Processing IMU data (initial load):', {
                             accelX: sensorData.accelX,
                             accelY: sensorData.accelY,
                             accelZ: sensorData.accelZ,
@@ -984,6 +1139,9 @@
                     
                     showMessage('Using demo health data - no sensor data found', 'info');
                 }
+
+                // Start live updates after initial load
+                setupRealtimeListener();
                 
             } catch (error) {
                 console.error('Error loading user data:', error);
@@ -991,102 +1149,32 @@
             }
         }
 
-        // Setup real-time listener for health data from sensorData path
-        function setupRealtimeListener() {
-            console.log('Setting up real-time sensor data listener...');
-            
-            const sensorDataRef = rtdb.ref('sensorData');
-            
-            sensorDataRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                
-                if (data) {
-                    // Get the latest sensor reading
-                    const sensorKeys = Object.keys(data);
-                    const latestKey = sensorKeys[sensorKeys.length - 1];
-                    const latestData = data[latestKey];
-                    
-                    if (latestData && latestData.heartRate !== undefined && latestData.spo2 !== undefined) {
-                        // Update UI with real-time data
-                        heartRate.textContent = latestData.heartRate;
-                        oxygenLevel.textContent = latestData.spo2;
-                        
-                        const timeText = formatTimestamp(Date.now());
-                        heartUpdated.textContent = `Updated: ${timeText}`;
-                        oxygenUpdated.textContent = `Updated: ${timeText}`;
-                        lastUpdateTime.textContent = `Last update: ${timeText}`;
-                        
-                        // Update status indicators
-                        updateHealthStatus(latestData.heartRate, latestData.spo2);
-                        
-                        // Process IMU data for step counting if available
-                        if (latestData.accelX !== undefined && 
-                            latestData.accelY !== undefined && 
-                            latestData.accelZ !== undefined) {
-                            
-                            const stepDetected = stepCounter.processIMUData(
-                                latestData.accelX,
-                                latestData.accelY,
-                                latestData.accelZ,
-                                Date.now(),
-                                latestData.heartRate
-                            );
-                            
-                            if (stepDetected) {
-                                console.log('🚶 Step detected! Total steps:', stepCounter.getStepCount());
-                            }
-                            
-                            // Update step count display
-                            const steps = stepCounter.getStepCount();
-                            stepsCount.textContent = steps.toLocaleString();
-                            updateStepStatus(steps);
-                        }
-                        
-                        console.log('Health data updated:', {
-                            heartRate: latestData.heartRate,
-                            spo2: latestData.spo2,
-                            steps: stepCounter.getStepCount()
-                        });
-                    }
-                }
-            }, (error) => {
-                console.error('Error in real-time listener:', error);
-                showMessage('Error updating health data', 'error');
-            });
-            
-            // Check for daily reset every minute
-            setInterval(() => {
-                stepCounter.checkDailyReset();
-                const steps = stepCounter.getStepCount();
-                stepsCount.textContent = steps.toLocaleString();
-                updateStepStatus(steps);
-            }, 60000);
-        }
-
-        // Logout function
-        function logout() {
+        // Wire logout button
+        logoutBtn.addEventListener('click', () => {
             auth.signOut().then(() => {
                 window.location.href = 'login.html';
-            }).catch((error) => {
-                console.error('Logout error:', error);
-                showMessage('Error during logout. Please try again.', 'error');
+            }).catch(err => {
+                console.error('Logout error', err);
+                alert('Logout failed.');
             });
-        }
+        });
 
-        // Check authentication state
+        // Auth listener — show profile only if signed in, then load data
         auth.onAuthStateChanged((user) => {
             if (user) {
-                console.log('User is signed in:', user.uid);
+                // load profile & start listeners
                 loadUserData(user);
-                setupRealtimeListener();
             } else {
-                console.log('User is signed out, redirecting to login');
+                // redirect to login if not signed in
+                console.log('No user signed in - redirecting to login.');
                 window.location.href = 'login.html';
             }
         });
 
-        // Event listeners
-        logoutBtn.addEventListener('click', logout);
+        // Keep daily reset check running every minute
+        setInterval(() => {
+            stepCounter.checkDailyReset();
+        }, 60 * 1000);
     </script>
 </body>
 </html>

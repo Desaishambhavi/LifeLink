@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeLink - Tablet Reminder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #1a1347 50%, #24243e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        nav {
+            display: flex;
+            gap: 40px;
+        }
+
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: #667eea;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .reminder-form {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        h1 {
+            font-size: 42px;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #667eea 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #b8b8d1;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #b8b8d1;
+            font-size: 14px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: none;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .reminders-list {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .reminders-list h2 {
+            margin-bottom: 25px;
+            color: #00f2fe;
+        }
+
+        .reminder-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.3s;
+        }
+
+        .reminder-card:hover {
+            transform: translateX(5px);
+        }
+
+        .reminder-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .tablet-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00f2fe;
+        }
+
+        .reminder-time {
+            color: #b8b8d1;
+            font-size: 14px;
+        }
+
+        .reminder-dosage {
+            color: #fff;
+            margin: 10px 0;
+        }
+
+        .reminder-notes {
+            color: #b8b8d1;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .delete-btn {
+            background: rgba(255, 59, 48, 0.2);
+            border: 1px solid rgba(255, 59, 48, 0.5);
+            color: #ff3b30;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 59, 48, 0.4);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(102, 126, 234, 0.95);
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: none;
+            animation: slideIn 0.3s ease-out;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification.show {
+            display: block;
+        }
+
+        .notification.error {
+            background: rgba(255, 59, 48, 0.95);
+        }
+
+        .notification.success {
+            background: rgba(52, 199, 89, 0.95);
+        }
+
+        .time-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .frequency-select {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .frequency-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .frequency-btn.active {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+        }
+
+        .debug-info {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #b8b8d1;
+            font-family: monospace;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">LifeLink</div>
+            <nav>
+                <a href="#">Home</a>
+                <a href="#">Dashboard</a>
+                <a href="#">Health Data</a>
+                <a href="#">Login/Sign-up</a>
+            </nav>
+        </header>
+
+        <div class="main-content">
+            <div class="reminder-form">
+                <h1>Tablet Reminder</h1>
+                <p class="subtitle">Set up medication reminders and get notifications via Telegram</p>
+
+                <form id="reminderForm">
+                    <div class="form-group">
+                        <label for="tabletName">Tablet Name *</label>
+                        <input type="text" id="tabletName" placeholder="e.g., Aspirin, Vitamin D" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dosage">Dosage *</label>
+                        <input type="text" id="dosage" placeholder="e.g., 1 tablet, 500mg" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Reminder Time *</label>
+                        <div class="time-inputs">
+                            <input type="time" id="reminderTime" required>
+                            <input type="date" id="reminderDate" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Frequency</label>
+                        <div class="frequency-select">
+                            <button type="button" class="frequency-btn active" data-freq="once">Once</button>
+                            <button type="button" class="frequency-btn" data-freq="daily">Daily</button>
+                            <button type="button" class="frequency-btn" data-freq="weekly">Weekly</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="notes">Notes (Optional)</label>
+                        <textarea id="notes" rows="3" placeholder="Additional instructions or notes"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn">Set Reminder</button>
+                </form>
+
+                <div class="debug-info" id="debugInfo">
+                    Monitoring active... Current time will update here
+                </div>
+            </div>
+
+            <div class="reminders-list">
+                <h2>Active Reminders</h2>
+                <div id="remindersList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        const botToken = "8492567230:AAG85aFUNpYuQJ9JgI8S5Q6TKjJfIMCiW4o";
+        const chatID = "6091477695";
+        const telegramAPI = "https://api.telegram.org";
+
+        // Store reminders in memory (not localStorage)
+        let reminders = [];
+        let selectedFrequency = 'once';
+        let sentNotifications = new Set(); // Track sent notifications
+
+        // Frequency button handling
+        document.querySelectorAll('.frequency-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.frequency-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                selectedFrequency = this.dataset.freq;
+            });
+        });
+
+        // Form submission
+        document.getElementById('reminderForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const tabletName = document.getElementById('tabletName').value;
+            const dosage = document.getElementById('dosage').value;
+            const reminderTime = document.getElementById('reminderTime').value;
+            const reminderDate = document.getElementById('reminderDate').value;
+            const notes = document.getElementById('notes').value;
+
+            const reminder = {
+                id: Date.now(),
+                tabletName,
+                dosage,
+                time: reminderTime,
+                date: reminderDate,
+                frequency: selectedFrequency,
+                notes,
+                active: true
+            };
+
+            reminders.push(reminder);
+
+            // Send Telegram confirmation
+            const message = `💊 *New Tablet Reminder Set*\n\n` +
+                          `*Tablet:* ${tabletName}\n` +
+                          `*Dosage:* ${dosage}\n` +
+                          `*Time:* ${reminderTime}\n` +
+                          `*Date:* ${reminderDate}\n` +
+                          `*Frequency:* ${selectedFrequency}\n` +
+                          (notes ? `*Notes:* ${notes}` : '');
+
+            await sendTelegramMessage(message);
+
+            displayReminders();
+            this.reset();
+            document.querySelectorAll('.frequency-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.frequency-btn[data-freq="once"]').classList.add('active');
+            selectedFrequency = 'once';
+            
+            showNotification('Reminder set successfully! Keep this page open.', 'success');
+        });
+
+        async function sendTelegramMessage(message) {
+            try {
+                const response = await fetch(`${telegramAPI}/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatID,
+                        text: message,
+                        parse_mode: 'Markdown'
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Telegram response:', data);
+
+                if (!response.ok) {
+                    throw new Error('Failed to send Telegram message');
+                }
+                return true;
+            } catch (error) {
+                console.error('Error sending Telegram message:', error);
+                showNotification('Failed to send Telegram notification', 'error');
+                return false;
+            }
+        }
+
+        function displayReminders() {
+            const list = document.getElementById('remindersList');
+            
+            if (reminders.length === 0) {
+                list.innerHTML = '<p style="color: #b8b8d1; text-align: center;">No active reminders</p>';
+                return;
+            }
+
+            list.innerHTML = reminders.map(reminder => `
+                <div class="reminder-card">
+                    <div class="reminder-header">
+                        <div class="tablet-name">${reminder.tabletName}</div>
+                        <button class="delete-btn" onclick="deleteReminder(${reminder.id})">Delete</button>
+                    </div>
+                    <div class="reminder-dosage">📋 ${reminder.dosage}</div>
+                    <div class="reminder-time">⏰ ${reminder.time} • ${reminder.date} • ${reminder.frequency}</div>
+                    ${reminder.notes ? `<div class="reminder-notes">📝 ${reminder.notes}</div>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function deleteReminder(id) {
+            reminders = reminders.filter(r => r.id !== id);
+            displayReminders();
+            showNotification('Reminder deleted', 'success');
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        // Check for reminders and send notifications
+        async function checkReminders() {
+            const now = new Date();
+            
+            // Format time as HH:MM (24-hour format)
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const currentTime = `${hours}:${minutes}`;
+            
+            // Format date as YYYY-MM-DD
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const currentDate = `${year}-${month}-${day}`;
+
+            // Update debug info
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.textContent = `🕐 Current: ${currentTime} | ${currentDate} | Checking ${reminders.length} reminder(s)`;
+
+            console.log('=== CHECKING REMINDERS ===');
+            console.log('Current time:', currentTime);
+            console.log('Current date:', currentDate);
+            console.log('Active reminders:', reminders);
+
+            for (const reminder of reminders) {
+                const reminderKey = `${reminder.id}_${currentDate}_${currentTime}`;
+                
+                console.log(`Checking: ${reminder.tabletName}`);
+                console.log(`  - Set for: ${reminder.time} on ${reminder.date}`);
+                console.log(`  - Match: Time=${reminder.time === currentTime}, Date=${reminder.date === currentDate}, Active=${reminder.active}`);
+
+                // Check if time and date match, and we haven't sent this notification yet
+                if (reminder.time === currentTime && 
+                    reminder.date === currentDate && 
+                    reminder.active && 
+                    !sentNotifications.has(reminderKey)) {
+                    
+                    console.log('🔔 MATCH FOUND! Sending notification...');
+                    
+                    const message = `⏰ *REMINDER: Time to take your medication!*\n\n` +
+                                  `💊 *Tablet:* ${reminder.tabletName}\n` +
+                                  `📋 *Dosage:* ${reminder.dosage}\n` +
+                                  `🕐 *Time:* ${reminder.time}\n` +
+                                  (reminder.notes ? `📝 *Notes:* ${reminder.notes}` : '');
+
+                    const success = await sendTelegramMessage(message);
+                    
+                    if (success) {
+                        // Mark as sent
+                        sentNotifications.add(reminderKey);
+                        
+                        // Show notification on page
+                        showNotification(`💊 Time to take ${reminder.tabletName}!`, 'success');
+                        
+                        console.log('✅ Notification sent successfully!');
+                        
+                        // Handle frequency
+                        if (reminder.frequency === 'once') {
+                            reminder.active = false;
+                            reminders = reminders.filter(r => r.id !== reminder.id);
+                            displayReminders();
+                            console.log('Reminder removed (once only)');
+                        }
+                    }
+                }
+            }
+        }
+
+        // Set today's date as default
+        const today = new Date();
+        document.getElementById('reminderDate').valueAsDate = today;
+
+        // Check reminders every 5 seconds for accurate timing
+        setInterval(checkReminders, 5000);
+        
+        // Run check immediately on page load
+        checkReminders();
+
+        // Initial display
+        displayReminders();
+
+        // Warn user if they try to close the page with active reminders
+        window.addEventListener('beforeunload', function (e) {
+            if (reminders.length > 0) {
+                e.preventDefault();
+                e.returnValue = 'You have active reminders. If you close this page, notifications will not be sent.';
+            }
+        });
+    </script>
+</body>
+</html>

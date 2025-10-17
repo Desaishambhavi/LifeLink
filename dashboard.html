@@ -121,6 +121,10 @@
             box-shadow: 0 0 20px rgba(0, 198, 255, 0.3);
         }
 
+        .health-card.wide {
+            grid-column: span 2;
+        }
+
         .card-header {
             display: flex;
             justify-content: space-between;
@@ -203,6 +207,21 @@
             font-weight: 600;
         }
 
+        .map-container {
+            margin-top: 1rem;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 300px;
+            background: rgba(0, 198, 255, 0.05);
+            border: 1px solid rgba(0, 198, 255, 0.2);
+        }
+
+        .map-container iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
         /* AI Analysis Section */
         .ai-analysis {
             background: var(--card-bg);
@@ -239,67 +258,6 @@
             background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
             border-left: 3px solid var(--neon-cyan);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .suggestion-text {
-            flex: 1;
-        }
-
-        .speak-btn {
-            background: rgba(0, 198, 255, 0.2);
-            border: 1px solid var(--neon-cyan);
-            color: var(--neon-cyan);
-            padding: 0.5rem;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .speak-btn:hover {
-            background: rgba(0, 198, 255, 0.4);
-            transform: scale(1.1);
-        }
-
-        .speak-btn.speaking {
-            background: var(--neon-cyan);
-            color: var(--dark-bg);
-            animation: pulse 1s ease-in-out infinite;
-        }
-
-        .speak-all-btn {
-            background: rgba(0, 198, 255, 0.1);
-            border: 1px solid var(--neon-cyan);
-            color: var(--neon-cyan);
-            padding: 0.6rem 1.2rem;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .speak-all-btn:hover {
-            background: rgba(0, 198, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .speak-all-btn.speaking {
-            background: var(--neon-cyan);
-            color: var(--dark-bg);
         }
 
         .btn {
@@ -319,9 +277,21 @@
             box-shadow: 0 0 15px rgba(119, 0, 255, 0.5);
         }
 
+        .btn-secondary {
+            background: linear-gradient(45deg, var(--neon-cyan), var(--neon-blue));
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.5);
+            margin-left: 1rem;
+        }
+
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 0 20px rgba(119, 0, 255, 0.7);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         .last-update {
@@ -381,11 +351,6 @@
             100% { transform: translateY(0) rotate(0deg); }
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-
         /* Responsive Design */
         @media (max-width: 768px) {
             nav ul {
@@ -399,6 +364,15 @@
             .dashboard-grid {
                 grid-template-columns: 1fr;
             }
+
+            .health-card.wide {
+                grid-column: span 1;
+            }
+
+            .btn-secondary {
+                margin-left: 0;
+                margin-top: 0.5rem;
+            }
         }
     </style>
 </head>
@@ -409,8 +383,9 @@
         <nav>
             <ul>
                 <li><a href="homepage.html" class="nav-link">Home</a></li>
-                <li><a href="https://lifelink-ai-vnq7yhzfeydugyzfnqfafw.streamlit.app/" class="nav-link">Health Data</a></li>
+                <li><a href="reportt.html" class="nav-link">Health Data</a></li>
                 <li><a href="profile.html" class="nav-link">Profile</a></li>
+                <li><a href="reminder.html" class="nav-link">Reminder</a></li>
             </ul>
         </nav>
     </header>
@@ -450,7 +425,7 @@
                 </div>
             </div>
             
-            <div class="health-card">
+            <div class="health-card wide">
                 <div class="card-header">
                     <h3 class="card-title">GPS Location</h3>
                     <div class="card-icon"><i class="fas fa-map-marker-alt"></i></div>
@@ -470,6 +445,17 @@
                     </div>
                 </div>
                 <div class="card-status" id="gpsStatus">Waiting for GPS data</div>
+                
+                <!-- Google Maps Embed -->
+                <div class="map-container">
+                    <iframe 
+                        id="googleMap"
+                        allowfullscreen="" 
+                        loading="lazy" 
+                        referrerpolicy="no-referrer-when-downgrade"
+                        src="about:blank">
+                    </iframe>
+                </div>
             </div>
         </div>
 
@@ -490,6 +476,10 @@
             <button class="btn btn-primary" id="analyzeBtn">
                 <i class="fas fa-brain" style="margin-right: 0.5rem;"></i>
                 Get Health Suggestions
+            </button>
+            <button class="btn btn-secondary" id="speakBtn" style="display: none;">
+                <i class="fas fa-volume-up" style="margin-right: 0.5rem;"></i>
+                <span id="speakBtnText">Play Analysis</span>
             </button>
         </div>
 
@@ -521,10 +511,9 @@
 
         // Store current health data
         let currentHealthData = {};
-        
-        // Text-to-Speech variables
-        let currentSpeech = null;
-        let isSpeaking = false;
+        let currentAnalysisText = '';
+        let speechSynthesis = window.speechSynthesis;
+        let currentUtterance = null;
 
         // Reference to the sensorData in Firebase
         const sensorDataRef = ref(database, 'sensorData');
@@ -534,7 +523,34 @@
             const GEMINI_API_KEY = 'AIzaSyDlqjHFgaXKrVrfseD5vlbIjCMUl9FVrlw'; // Replace with your actual API key
             
             const prompt = `As a medical AI assistant, analyze this health data and provide 3-4 concise, actionable suggestions:
-                       
+            Descriptive Statistics
+A quick look at the data shows the distribution of values for each metric.
+
+Oxygen Saturation (SpO2): This measures the percentage of oxygen in the blood. Normal levels for a healthy person are typically between 95% and 100%. The data seems to have a wide range of values, but most fall within this normal range, with some instances of lower readings. Readings of 92% or less require urgent medical advice. Levels below 90% are considered hypoxemic, and below 85% is considered severely hypoxemic, likely requiring supplemental oxygen.
+
+Pulse Rate (bpm): This measures the heart rate in beats per minute. Normal resting heart rates are generally considered to be between 40 and 100 bpm. A fast heart rate, or tachycardia, is a symptom of low oxygen levels. The data shows a wide range of pulse rates, from very low to very high. Readings of 110-130 bpm suggest seeking advice from a GP, while readings of 131 bpm or more require urgent medical attention.
+
+Relationship between Oxygen and Pulse Rate
+Typically, there's an inverse relationship between oxygen saturation and heart rate, especially in cases of hypoxia (low blood oxygen). When oxygen levels drop, the heart rate often increases to compensate and pump oxygenated blood more quickly to the body's tissues. This is a natural response to try and maintain proper function.
+
+A quick analysis shows that high pulse rates often coincide with lower oxygen saturation levels, while normal or low pulse rates are generally seen with normal oxygen saturation.
+
+While an elevated pulse rate can be a symptom of low oxygen, it's not the only factor, and the link may not be strong enough to rely on in all cases.
+
+Decision-Making Recommendations
+Based on this analysis, the following values can be used as a basis for decision-making:
+
+Normal Range: If a person's oxygen saturation is 96% or more and their pulse rate is between 40-100 bpm, their vital signs are considered normal.
+
+Acceptable Range for Monitoring: An oxygen saturation of 95% with a pulse rate of 101-109 bpm is acceptable for home monitoring, but indicates a need for increased vigilance.
+
+Warning Signs (Seek GP Advice): Readings of oxygen saturation between 93-94% or a pulse rate between 110-130 bpm are warning signs. At these levels, medical advice should be sought from a general practitioner. A drop of 3% or more in SpO2, even if still in the normal range, may also be an indicator of an acute illness and warrants a fuller assessment.
+
+Critical Condition (Urgent Medical Attention): Readings of oxygen saturation at 92% or less, or a pulse rate of 131 bpm or more, are considered critical and require immediate emergency medical assistance (e.g., calling 999).
+
+Further Analysis
+While this basic analysis provides a solid foundation, further insights could be gained by building a predictive model using regression analysis. This would allow for a more precise understanding of how changes in oxygen levels could predict changes in pulse rate. Analyzing the data over time for a single individual could also reveal important trends that are not visible in a static snapshot of all data points. However, it's important to remember that pulse oximeter readings can sometimes be inaccurate due to factors like cold skin, poor circulation, or even dark nail polish.
+            
             Current Health Metrics:
             - Heart Rate: ${healthData.heartRate} BPM
             - Oxygen Level (SpO2): ${healthData.spo2}%
@@ -577,101 +593,25 @@
             }
         }
 
-        // Function to speak text
-        function speakText(text, button) {
-            // Stop any ongoing speech
-            if (currentSpeech) {
-                window.speechSynthesis.cancel();
-                currentSpeech = null;
-            }
-
-            // Remove speaking class from all buttons
-            document.querySelectorAll('.speak-btn, .speak-all-btn').forEach(btn => {
-                btn.classList.remove('speaking');
-            });
-
-            // If same button clicked while speaking, just stop
-            if (isSpeaking && button.classList.contains('speaking')) {
-                isSpeaking = false;
-                return;
-            }
-
-            // Create new speech
-            currentSpeech = new SpeechSynthesisUtterance(text);
-            currentSpeech.rate = 0.9; // Slightly slower for better clarity
-            currentSpeech.pitch = 1;
-            currentSpeech.volume = 1;
-
-            // Add speaking class to button
-            button.classList.add('speaking');
-            isSpeaking = true;
-
-            // Event listeners
-            currentSpeech.onend = () => {
-                button.classList.remove('speaking');
-                isSpeaking = false;
-                currentSpeech = null;
-            };
-
-            currentSpeech.onerror = () => {
-                button.classList.remove('speaking');
-                isSpeaking = false;
-                currentSpeech = null;
-            };
-
-            // Speak
-            window.speechSynthesis.speak(currentSpeech);
-        }
-
-        // Function to stop speech
-        function stopSpeech() {
-            if (currentSpeech) {
-                window.speechSynthesis.cancel();
-                currentSpeech = null;
-                isSpeaking = false;
-                document.querySelectorAll('.speak-btn, .speak-all-btn').forEach(btn => {
-                    btn.classList.remove('speaking');
-                });
-            }
-        }
-
-        // Make speakText available globally for onclick handlers
-        window.speakText = speakText;
-
         // Function to display suggestions
         function displaySuggestions(suggestionsText) {
             const suggestionsContainer = document.getElementById('aiSuggestions');
+            
+            // Store the analysis text for voice output
+            currentAnalysisText = suggestionsText;
+            
+            // Show the speak button
+            document.getElementById('speakBtn').style.display = 'inline-block';
             
             // Parse the text and format it nicely
             const suggestions = suggestionsText.split('\n').filter(line => 
                 line.trim() && (line.includes('•') || line.includes('-') || line.match(/^\d+\./) || line.trim().length > 20)
             );
             
-            // Stop any ongoing speech when displaying new suggestions
-            stopSpeech();
-            
             suggestionsContainer.innerHTML = '';
             
-            // Add "Read All" button
-            const readAllBtn = document.createElement('button');
-            readAllBtn.className = 'speak-all-btn';
-            readAllBtn.innerHTML = '<i class="fas fa-volume-up"></i> Read All Suggestions';
-            readAllBtn.onclick = function() {
-                const allText = suggestions.map(s => s.replace(/^[•\-\d\.\s]+/, '').trim()).join('. ');
-                speakText(allText, this);
-            };
-            suggestionsContainer.appendChild(readAllBtn);
-            
             if (suggestions.length === 0) {
-                const item = document.createElement('div');
-                item.className = 'suggestion-item';
-                item.innerHTML = `
-                    <div class="suggestion-text">${suggestionsText}</div>
-                    <button class="speak-btn" onclick="speakText('${suggestionsText.replace(/'/g, "\\'")}', this)">
-                        <i class="fas fa-volume-up"></i>
-                    </button>
-                `;
-                suggestionsContainer.appendChild(item);
+                suggestionsContainer.innerHTML = '<div class="suggestion-item">' + suggestionsText + '</div>';
                 return;
             }
             
@@ -680,23 +620,77 @@
                 if (cleanSuggestion) {
                     const suggestionElement = document.createElement('div');
                     suggestionElement.className = 'suggestion-item';
-                    
-                    const textDiv = document.createElement('div');
-                    textDiv.className = 'suggestion-text';
-                    textDiv.textContent = cleanSuggestion;
-                    
-                    const speakBtn = document.createElement('button');
-                    speakBtn.className = 'speak-btn';
-                    speakBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
-                    speakBtn.onclick = function() {
-                        speakText(cleanSuggestion, this);
-                    };
-                    
-                    suggestionElement.appendChild(textDiv);
-                    suggestionElement.appendChild(speakBtn);
+                    suggestionElement.textContent = cleanSuggestion;
                     suggestionsContainer.appendChild(suggestionElement);
                 }
             });
+        }
+
+        // Function to speak the analysis
+        function speakAnalysis() {
+            const speakBtn = document.getElementById('speakBtn');
+            const speakBtnText = document.getElementById('speakBtnText');
+            
+            // If currently speaking, stop it
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+                speakBtnText.innerHTML = 'Play Analysis';
+                speakBtn.querySelector('i').className = 'fas fa-volume-up';
+                return;
+            }
+            
+            if (!currentAnalysisText) {
+                alert('No analysis available to read.');
+                return;
+            }
+            
+            // Create a new utterance
+            currentUtterance = new SpeechSynthesisUtterance(currentAnalysisText);
+            
+            // Configure voice settings
+            currentUtterance.rate = 0.9; // Slightly slower for medical information
+            currentUtterance.pitch = 1;
+            currentUtterance.volume = 1;
+            
+            // Try to use a more natural voice if available
+            const voices = speechSynthesis.getVoices();
+            const preferredVoice = voices.find(voice => 
+                voice.lang.startsWith('en') && (voice.name.includes('Female') || voice.name.includes('Google'))
+            );
+            if (preferredVoice) {
+                currentUtterance.voice = preferredVoice;
+            }
+            
+            // Update button during speech
+            currentUtterance.onstart = () => {
+                speakBtnText.innerHTML = 'Stop';
+                speakBtn.querySelector('i').className = 'fas fa-stop';
+            };
+            
+            currentUtterance.onend = () => {
+                speakBtnText.innerHTML = 'Play Analysis';
+                speakBtn.querySelector('i').className = 'fas fa-volume-up';
+            };
+            
+            currentUtterance.onerror = (event) => {
+                console.error('Speech synthesis error:', event);
+                speakBtnText.innerHTML = 'Play Analysis';
+                speakBtn.querySelector('i').className = 'fas fa-volume-up';
+                alert('Error playing audio. Please try again.');
+            };
+            
+            // Speak the text
+            speechSynthesis.speak(currentUtterance);
+        }
+
+        // Event listener for speak button
+        document.getElementById('speakBtn').addEventListener('click', speakAnalysis);
+
+        // Load voices when they're ready
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => {
+                speechSynthesis.getVoices();
+            };
         }
 
         // Event listener for analyze button
@@ -740,68 +734,104 @@
             }
         }
 
+        // Function to update Google Maps
+        function updateMap(latitude, longitude) {
+            if (latitude && longitude && latitude !== 0 && longitude !== 0) {
+                const mapIframe = document.getElementById('googleMap');
+                const mapUrl = `https://maps.google.com/maps?q=${latitude},${longitude}&z=15&output=embed`;
+                mapIframe.src = mapUrl;
+            }
+        }
+
         // Listen for real-time updates
         onValue(sensorDataRef, (snapshot) => {
             const data = snapshot.val();
-            
-            if (data) {
-                // Get the latest sensor reading (last entry in the object)
+            if (!data) {
+                console.warn('No data received from Firebase');
+                return;
+            }
+
+            try {
                 const sensorKeys = Object.keys(data);
                 const latestKey = sensorKeys[sensorKeys.length - 1];
                 const latestData = data[latestKey];
 
-                // Store current data for analysis
+                // Store current data for analysis first
                 currentHealthData = { ...latestData };
 
-                // Update Heart Rate
-                const heartRate = latestData.heartRate || 0;
-                document.getElementById('heartRateValue').textContent = `${heartRate} BPM`;
-                
-                // Update Heart Rate Status and Progress
-                let heartRateStatus = 'Normal';
-                let heartRateProgress = (heartRate / 200) * 100;
-                
-                if (heartRate < 60) {
-                    heartRateStatus = 'Low';
-                    document.getElementById('heartRateStatus').className = 'card-status status-warning';
-                } else if (heartRate > 100) {
-                    heartRateStatus = 'High';
-                    document.getElementById('heartRateStatus').className = 'card-status status-critical';
-                } else {
-                    heartRateStatus = 'Normal';
-                    document.getElementById('heartRateStatus').className = 'card-status status-normal';
-                }
-                
-                document.getElementById('heartRateStatus').textContent = heartRateStatus;
-                document.getElementById('heartRateProgress').style.width = `${Math.min(heartRateProgress, 100)}%`;
+                // Validate and update heart rate
+                const heartRate = Number(latestData.heartRate) || 0;
+                const heartRateElement = document.getElementById('heartRateValue');
+                const heartRateStatus = document.getElementById('heartRateStatus');
+                const heartRateProgress = document.getElementById('heartRateProgress');
 
-                // Update SpO2
-                const spo2 = latestData.spo2 || 0;
-                const spo2Valid = latestData.spo2Valid || false;
-                document.getElementById('spo2Value').textContent = `${spo2}%`;
-                
-                // Update SpO2 Status and Progress
-                let spo2Status = 'Good';
-                let spo2Progress = spo2;
-                
-                if (spo2 < 90) {
-                    spo2Status = 'Critical';
-                    document.getElementById('spo2Status').className = 'card-status status-critical';
-                } else if (spo2 < 90) {
-                    spo2Status = 'Low';
-                    document.getElementById('spo2Status').className = 'card-status status-warning';
+                if (isValidHeartRate(heartRate)) {
+                    heartRateElement.textContent = `${heartRate} BPM`;
+                    
+                    // Update heart rate status
+                    if (heartRate < 60) {
+                        heartRateStatus.textContent = 'Low';
+                        heartRateStatus.className = 'card-status status-warning';
+                    } else if (heartRate > 100) {
+                        heartRateStatus.textContent = 'High';
+                        heartRateStatus.className = 'card-status status-critical';
+                    } else {
+                        heartRateStatus.textContent = 'Normal';
+                        heartRateStatus.className = 'card-status status-normal';
+                    }
+                    
+                    // Update progress bar
+                    const progress = (heartRate / 200) * 100;
+                    heartRateProgress.style.width = `${Math.min(progress, 100)}%`;
                 } else {
-                    spo2Status = 'Normal';
-                    document.getElementById('spo2Status').className = 'card-status status-normal';
+                    console.warn('Invalid heart rate value:', heartRate);
+                    heartRateElement.textContent = 'Error';
+                    heartRateStatus.textContent = 'Invalid';
+                    heartRateStatus.className = 'card-status status-warning';
+                    heartRateProgress.style.width = '0%';
                 }
-                
-                if (!spo2Valid) {
-                    spo2Status = 'Invalid Reading';
-                    document.getElementById('spo2Status').className = 'card-status status-warning';
+
+                // Validate and update SpO2
+                const spo2 = Number(latestData.spo2) || 0;
+                const spo2Valid = Boolean(latestData.spo2Valid);
+                const spo2Element = document.getElementById('spo2Value');
+                const spo2Status = document.getElementById('spo2Status');
+                const spo2Progress = document.getElementById('spo2Progress');
+
+                if (isValidSpO2(spo2) && spo2Valid) {
+                    spo2Element.textContent = `${spo2}%`;
+                    
+                    // Update SpO2 status
+                    if (spo2 < 95) {
+                        spo2Status.textContent = 'Low';
+                        spo2Status.className = 'card-status status-critical';
+                    } else if (spo2 < 97) {
+                        spo2Status.textContent = 'Fair';
+                        spo2Status.className = 'card-status status-warning';
+                    } else {
+                        spo2Status.textContent = 'Good';
+                        spo2Status.className = 'card-status status-normal';
+                    }
+                    
+                    // Update progress bar
+                    spo2Progress.style.width = `${spo2}%`;
+                } else {
+                    console.warn('Invalid SpO2 value:', spo2, 'Valid:', spo2Valid);
+                    spo2Element.textContent = 'Error';
+                    spo2Status.textContent = 'Invalid Reading';
+                    spo2Status.className = 'card-status status-warning';
+                    spo2Progress.style.width = '0%';
                 }
-                
-                document.getElementById('spo2Status').textContent = spo2Status;
-                document.getElementById('spo2Progress').style.width = `${spo2Progress}%`;
+
+                // Validate GPS
+                const gps = latestData.gps || {};
+                if (isValidGPS(gps.latitude, gps.longitude)) {
+                    updateMap(gps.latitude, gps.longitude);
+                } else {
+                    console.warn('Invalid GPS coordinates:', gps);
+                    document.getElementById('gpsStatus').textContent = 'Invalid Location Data';
+                    document.getElementById('gpsStatus').className = 'card-status status-warning';
+                }
 
                 // Update GPS Data
                 const gpsData = latestData.gps || {};
@@ -809,7 +839,7 @@
                 document.getElementById('gpsLongitude').textContent = gpsData.longitude || 'No data';
                 document.getElementById('gpsSatellites').textContent = gpsData.satellites || '0';
                 
-                // Update GPS Status
+                // Update GPS Status and Map
                 const gpsStatus = (gpsData.latitude && gpsData.longitude && gpsData.latitude !== 0 && gpsData.longitude !== 0) 
                     ? 'Location Active' 
                     : 'Waiting for GPS';
@@ -817,6 +847,9 @@
                 document.getElementById('gpsStatus').className = gpsStatus === 'Location Active' 
                     ? 'card-status status-normal' 
                     : 'card-status status-warning';
+
+                // Update Google Maps
+                updateMap(gpsData.latitude, gpsData.longitude);
 
                 // Update last update time
                 const now = new Date();
@@ -826,6 +859,9 @@
                 autoAnalyzeIfNeeded(latestData);
 
                 console.log('Updated data from Firebase:', latestData);
+            } catch (error) {
+                console.error('Error processing sensor data:', error);
+                showError('Error processing health data');
             }
         }, (error) => {
             console.error('Error reading from Firebase:', error);
@@ -833,6 +869,43 @@
             document.getElementById('spo2Status').textContent = 'Connection Error';
             document.getElementById('gpsStatus').textContent = 'Connection Error';
         });
+
+        // Add these validation functions after Firebase initialization
+
+        function isValidHeartRate(hr) {
+            return typeof hr === 'number' && hr > 0 && hr < 300;
+        }
+
+        function isValidSpO2(spo2) {
+            return typeof spo2 === 'number' && spo2 >= 0 && spo2 <= 100;
+        }
+
+        function isValidGPS(lat, long) {
+            return typeof lat === 'number' && 
+                   typeof long === 'number' &&
+                   lat >= -90 && lat <= 90 && 
+                   long >= -180 && long <= 180;
+        }
+
+        // Add error display function
+        function showError(message) {
+            const suggestions = document.getElementById('aiSuggestions');
+            suggestions.innerHTML = `<div class="suggestion-item" style="color: #ff6b6b;">${message}</div>`;
+        }
+
+        // Add retry mechanism for API calls
+        async function retryFetch(url, options, maxRetries = 3) {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+                }
+            }
+        }
     </script>
 </body>
 </html>
